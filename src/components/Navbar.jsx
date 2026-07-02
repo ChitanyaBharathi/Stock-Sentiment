@@ -7,10 +7,10 @@ const COMPANY_NAMES = {
   NVDA: 'NVIDIA Corp',
 };
 
-export default function Navbar({ onSearch, isFetching, hasError, activeTicker }) {
+export default function Navbar({ onSearch, isFetching, hasError, activeTicker, activeSidebarItem = 'Invest', profileName = 'James Gandolfini' }) {
   const [query, setQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('FINNHUB_API_KEY') || '');
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -30,7 +30,7 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker })
     window.location.reload();
   };
 
-  const activeMode = localStorage.getItem('FINNHUB_API_KEY') ? 'LIVE API' : 'MOCK ENGINE';
+  const activeMode = (import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY')) ? 'LIVE API' : 'MOCK ENGINE';
   const companyName = COMPANY_NAMES[activeTicker] || `${activeTicker} Corp`;
 
   return (
@@ -39,11 +39,11 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker })
       {/* Left Breadcrumb */}
       <div className="flex items-center space-x-2 font-sans text-sm">
         <span className="text-brandText/40 hover:text-brandText/70 cursor-pointer transition-colors">
-          Invest
+          {activeSidebarItem === 'Invest' ? 'Invest' : 'App'}
         </span>
         <span className="text-brandText/30 font-mono text-xs">/</span>
         <span className="text-white font-semibold">
-          {companyName}
+          {activeSidebarItem === 'Invest' ? companyName : activeSidebarItem}
         </span>
       </div>
 
@@ -84,7 +84,7 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker })
             className="w-7 h-7 rounded-full object-cover border border-white/10"
           />
           <span className="font-sans text-xs font-semibold text-brandText/80 hidden sm:inline-block">
-            James Gandolfini
+            {profileName}
           </span>
         </div>
 
