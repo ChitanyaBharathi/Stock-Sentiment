@@ -5,7 +5,22 @@ import Navbar from './components/Navbar';
 import CustomChart from './components/CustomChart';
 import VolatilityMeter from './components/VolatilityMeter';
 import TelemetryFeed from './components/TelemetryFeed';
-import { Bell, Star, ArrowUpRight, ShieldCheck } from 'lucide-react';
+import Watchlist from './components/Watchlist';
+import { 
+  Bell, 
+  Star, 
+  ArrowUpRight, 
+  ShieldCheck, 
+  AlertTriangle, 
+  TrendingUp, 
+  Wallet as WalletIcon,
+  CreditCard,
+  Users,
+  Settings as SettingsIcon,
+  ArrowRight,
+  LogOut,
+  Monitor
+} from 'lucide-react';
 import gsap from 'gsap';
 
 const COMPANY_META = {
@@ -45,9 +60,15 @@ export default function App() {
   const [tickers, setTickers] = useState(['AAPL', 'TSLA', 'NVDA']);
   const [activeTicker, setActiveTicker] = useState('AAPL');
   const [activeTab, setActiveTab] = useState('Overview');
-  const [activeSidebarItem, setActiveSidebarItem] = useState('Invest');
+  const [activeSidebarItem, setActiveSidebarItem] = useState('Home');
   const [isAlertActive, setIsAlertActive] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
+  
+  // Settings & forms state
+  const [settingsApiKey, setSettingsApiKey] = useState(localStorage.getItem('FINNHUB_API_KEY') || '');
+  const [walletAmount, setWalletAmount] = useState('');
+  const [transferForm, setTransferForm] = useState({ asset: 'USD', destination: '', amount: '' });
+  const [personalForm, setPersonalForm] = useState({ name: 'James Gandolfini', email: 'james.gandolfini@sentimeter.io', account: 'VIP Premium Partner' });
 
   const { data, loading, error, flashDirection, telemetryLogs } = useStockData(activeTicker);
 
@@ -58,6 +79,7 @@ export default function App() {
       setTickers([...tickers, newTicker]);
     }
     setActiveTicker(newTicker);
+    setActiveSidebarItem('Invest'); // Switch to Invest to show the search output
   };
 
   // GSAP Entrance Animations
@@ -77,7 +99,19 @@ export default function App() {
     }, containerRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [activeSidebarItem]); // Re-animate when views switch!
+
+  const handleSaveActivationKey = (key) => {
+    if (key.trim()) {
+      localStorage.setItem('FINNHUB_API_KEY', key.trim());
+      window.location.reload();
+    }
+  };
+
+  const handleLogoutReset = () => {
+    localStorage.removeItem('FINNHUB_API_KEY');
+    window.location.reload();
+  };
 
   const meta = COMPANY_META[activeTicker] || {
     name: `${activeTicker} Equities`,
@@ -91,6 +125,403 @@ export default function App() {
   };
 
   const isPositive = data ? data.dp >= 0 : true;
+
+  // View Renders
+  const renderHome = () => (
+    <div className="reveal-content space-y-6 text-left">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-white/[0.03] to-transparent p-8 rounded-3xl border border-brandBorder">
+        <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome back, James.</h2>
+        <p className="text-xs text-brandText/45 mt-1">Here is your market tracking overview for today.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Balance Card */}
+        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl space-y-4">
+          <div>
+            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Available Portfolio Balance</span>
+            <span className="text-3xl font-extrabold text-white tracking-tight mt-1.5 block">$24,850.40</span>
+          </div>
+          <div className="flex items-center space-x-1.5 text-xs text-brandAccent font-semibold">
+            <TrendingUp className="w-4 h-4" />
+            <span>+$120.50 today (+0.48%)</span>
+          </div>
+        </div>
+
+        {/* Quant Level */}
+        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl flex flex-col justify-between">
+          <div>
+            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block font-bold">Quant Credentials</span>
+            <span className="text-lg font-bold text-white tracking-tight mt-1.5 block">Level 1 Security clearance</span>
+          </div>
+          <span className="text-[10px] font-mono text-brandText/30 uppercase tracking-wider block mt-4">ID: SNTM-73 // SECURE SOCKETS ACTIVE</span>
+        </div>
+
+        {/* Live status */}
+        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl flex flex-col justify-between">
+          <div>
+            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Finnhub API Status</span>
+            <span className="text-lg font-bold text-brandAccent tracking-tight mt-1.5 block flex items-center space-x-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-brandAccent animate-pulse" />
+              <span>Connected & Streaming</span>
+            </span>
+          </div>
+          <span className="text-[10px] font-mono text-brandText/30 uppercase tracking-wider block mt-4">TOKEN STATUS: OPERATIONAL</span>
+        </div>
+      </div>
+
+      {/* Watchlist Section */}
+      <div className="pt-2">
+        <Watchlist 
+          tickers={tickers} 
+          activeTicker={activeTicker} 
+          onSelectTicker={(ticker) => {
+            setActiveTicker(ticker);
+            setActiveSidebarItem('Invest');
+          }} 
+        />
+      </div>
+    </div>
+  );
+
+  const renderWallet = () => (
+    <div className="reveal-content space-y-6 text-left max-w-2xl">
+      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-4">
+        <div>
+          <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Wallet Cash Balance</span>
+          <span className="text-4xl font-extrabold text-white tracking-tight mt-1.5 block">$12,450.00</span>
+        </div>
+        <p className="text-xs text-brandText/45 leading-relaxed">
+          Deposit cash to buy stocks, or withdraw funds directly to your verified bank account.
+        </p>
+      </div>
+
+      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-4">
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Deposit Cash</h3>
+        
+        <div className="flex gap-3">
+          <input
+            type="number"
+            value={walletAmount}
+            onChange={(e) => setWalletAmount(e.target.value)}
+            placeholder="Enter deposit amount ($)..."
+            className="flex-1 bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 font-mono text-xs text-white focus:outline-none focus:border-white/20 transition-all"
+          />
+          <button
+            onClick={() => {
+              if (walletAmount) {
+                alert(`Mock deposit of $${walletAmount} initialized.`);
+                setWalletAmount('');
+              }
+            }}
+            className="px-6 py-3 bg-white text-black font-sans font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md"
+          >
+            Deposit Funds
+          </button>
+        </div>
+      </div>
+
+      {/* Linked Accounts */}
+      <div className="space-y-3">
+        <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Linked bank accounts</span>
+        
+        <div className="bg-[#131316] border border-brandBorder p-5 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-brandText/70" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Wells Fargo checking</h4>
+              <p className="text-[10px] font-mono text-brandText/40 mt-0.5">•••• •••• •••• 4892</p>
+            </div>
+          </div>
+          <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold">VERIFIED</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTransfer = () => (
+    <div className="reveal-content space-y-6 text-left max-w-2xl">
+      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
+        <div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Transfer Assets</h3>
+          <p className="text-xs text-brandText/45 mt-1">Move cash or equities securely between linked profiles.</p>
+        </div>
+
+        <div className="space-y-4 font-sans text-xs">
+          {/* Transfer Type */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Select Asset</label>
+            <select 
+              value={transferForm.asset}
+              onChange={(e) => setTransferForm({...transferForm, asset: e.target.value})}
+              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all font-mono"
+            >
+              <option value="USD">USD - Cash Balance</option>
+              <option value="AAPL">AAPL - Apple Equities</option>
+              <option value="TSLA">TSLA - Tesla Equities</option>
+              <option value="NVDA">NVDA - NVIDIA Equities</option>
+            </select>
+          </div>
+
+          {/* Target */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Destination Address / Email</label>
+            <input 
+              type="text"
+              value={transferForm.destination}
+              onChange={(e) => setTransferForm({...transferForm, destination: e.target.value})}
+              placeholder="e.g. transfer-id or verified email..."
+              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
+            />
+          </div>
+
+          {/* Amount */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Amount / Shares count</label>
+            <input 
+              type="number"
+              value={transferForm.amount}
+              onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
+              placeholder="Amount..."
+              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all font-mono"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              if (transferForm.destination && transferForm.amount) {
+                alert(`Mock transfer order of ${transferForm.amount} ${transferForm.asset} to ${transferForm.destination} initialized.`);
+                setTransferForm({ asset: 'USD', destination: '', amount: '' });
+              }
+            }}
+            className="w-full py-3 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 transition-all flex items-center justify-center space-x-1.5 shadow-md mt-4"
+          >
+            <span>Execute Transfer</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderShop = () => (
+    <div className="reveal-content space-y-6 text-left">
+      <div>
+        <h2 className="text-xl font-bold text-white uppercase tracking-wider">Quant Services Shop</h2>
+        <p className="text-xs text-brandText/45 mt-1">Upgrade your subscription plan to unlock predictive sentiment signals and API keys.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Card 1 */}
+        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl space-y-6 flex flex-col justify-between">
+          <div className="space-y-4">
+            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block font-bold">Standard Stream</span>
+            <h3 className="text-2xl font-bold text-white">$0 <span className="text-xs font-normal text-brandText/40">/ month</span></h3>
+            <p className="text-xs text-brandText/60 leading-relaxed font-sans">
+              Basic real-time data feeds using standard fallback keys. Perfect for individual tracking.
+            </p>
+          </div>
+          <button className="w-full py-2.5 rounded-xl border border-white/10 text-xs font-bold text-white bg-white/5 cursor-default">
+            Active Plan
+          </button>
+        </div>
+
+        {/* Card 2 */}
+        <div className="bg-[#131316] border border-brandAccent/30 p-6 rounded-3xl space-y-6 flex flex-col justify-between relative shadow-lg shadow-brandAccent/5">
+          <span className="absolute top-0 right-6 -translate-y-1/2 bg-brandAccent text-black text-[9px] font-extrabold px-2.5 py-0.5 rounded-full font-sans uppercase">Popular</span>
+          
+          <div className="space-y-4">
+            <span className="text-[10px] font-mono text-brandAccent uppercase tracking-widest block font-bold">Quant Intelligence Pro</span>
+            <h3 className="text-2xl font-bold text-white">$29 <span className="text-xs font-normal text-brandText/40">/ month</span></h3>
+            <p className="text-xs text-brandText/60 leading-relaxed font-sans">
+              Unlocks the Market Sentiment AI. View social media volume velocity, news alerts, and custom tickers.
+            </p>
+          </div>
+          <button className="w-full py-2.5 rounded-xl bg-brandAccent text-black text-xs font-bold hover:bg-brandAccent/90 transition-all shadow-md">
+            Upgrade to Pro
+          </button>
+        </div>
+
+        {/* Card 3 */}
+        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl space-y-6 flex flex-col justify-between">
+          <div className="space-y-4">
+            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block font-bold">Enterprise API Tier</span>
+            <h3 className="text-2xl font-bold text-white">$199 <span className="text-xs font-normal text-brandText/40">/ month</span></h3>
+            <p className="text-xs text-brandText/60 leading-relaxed font-sans">
+              Dedicated server endpoints, row level security integrations, webhooks, and unlimited web telemetry socket queries.
+            </p>
+          </div>
+          <button className="w-full py-2.5 rounded-xl border border-white/10 text-xs font-bold text-white bg-transparent hover:bg-white/[0.04] transition-all">
+            Contact Sales
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPersonal = () => (
+    <div className="reveal-content space-y-6 text-left max-w-2xl">
+      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
+        <div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Personal Profile Details</h3>
+          <p className="text-xs text-brandText/45 mt-1">Manage your verified quant accounts and credentials.</p>
+        </div>
+
+        <div className="space-y-4 font-sans text-xs">
+          {/* Name */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Full Name</label>
+            <input 
+              type="text"
+              value={personalForm.name}
+              onChange={(e) => setPersonalForm({...personalForm, name: e.target.value})}
+              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
+            />
+          </div>
+
+          {/* Email */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Email Address</label>
+            <input 
+              type="email"
+              value={personalForm.email}
+              onChange={(e) => setPersonalForm({...personalForm, email: e.target.value})}
+              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
+            />
+          </div>
+
+          {/* Account level */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Account Clearance Level</label>
+            <input 
+              type="text"
+              value={personalForm.account}
+              disabled
+              className="w-full bg-[#0C0C0E] border border-white/5 rounded-xl px-4 py-3 text-brandText/40 cursor-not-allowed font-semibold"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              alert(`Profile updated successfully!`);
+            }}
+            className="px-6 py-3 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md"
+          >
+            Save Profile
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="reveal-content space-y-6 text-left max-w-2xl">
+      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
+        <div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Settings & API Configuration</h3>
+          <p className="text-xs text-brandText/45 mt-1">Configure your Finnhub developers tokens directly inside the dashboard panel.</p>
+        </div>
+
+        <div className="space-y-4 font-sans text-xs">
+          <div className="space-y-2">
+            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Finnhub API Key</label>
+            <input 
+              type="password"
+              value={settingsApiKey}
+              onChange={(e) => setSettingsApiKey(e.target.value)}
+              placeholder="Paste token string..."
+              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 font-mono text-white focus:outline-none focus:border-white/20 transition-all"
+            />
+            <span className="block text-[10px] text-brandText/30 font-sans mt-1 leading-relaxed">
+              If empty, the terminal defaults to your preconfigured token. Press "Save Token" to override.
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              handleSaveActivationKey(settingsApiKey);
+              alert('Settings saved successfully!');
+            }}
+            className="px-6 py-3 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md"
+          >
+            Save Token
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSessions = () => (
+    <div className="reveal-content space-y-6 text-left max-w-2xl">
+      <div>
+        <h2 className="text-xl font-bold text-white uppercase tracking-wider">Active Credentials Sessions</h2>
+        <p className="text-xs text-brandText/45 mt-1">Review active socket tokens logged from other devices.</p>
+      </div>
+
+      <div className="space-y-3">
+        {/* Session 1 */}
+        <div className="bg-[#131316] border border-brandBorder p-5 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <Monitor className="w-5 h-5 text-brandText/70" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Vite Dev Client — Windows OS</h4>
+              <p className="text-[10px] font-mono text-brandText/40 mt-0.5">IP: 192.168.1.84 // LOCATION: LOCALHOST</p>
+            </div>
+          </div>
+          <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold">ACTIVE NOW</span>
+        </div>
+
+        {/* Session 2 */}
+        <div className="bg-[#131316] border border-brandBorder p-5 rounded-2xl flex items-center justify-between opacity-60">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <Monitor className="w-5 h-5 text-brandText/70" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-white">Safari Browser — iPhone 15</h4>
+              <p className="text-[10px] font-mono text-brandText/40 mt-0.5">IP: 108.43.2.19 // LOCATION: NEW YORK, USA</p>
+            </div>
+          </div>
+          <span className="bg-white/5 text-brandText/40 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold">2 HOURS AGO</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderLogout = () => (
+    <div className="reveal-content text-left max-w-sm mx-auto pt-12">
+      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-6 text-center shadow-xl">
+        <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+          <LogOut className="w-6 h-6 text-red-500" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-white">Sign Out of Terminal</h3>
+          <p className="text-xs text-brandText/50 mt-1.5 leading-relaxed">
+            Clicking reset will wipe your Finnhub token key from local memory and sign you out.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={handleLogoutReset}
+            className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-red-500/10"
+          >
+            Clear Credentials & Reset
+          </button>
+          <button
+            onClick={() => setActiveSidebarItem('Home')}
+            className="w-full py-3 bg-transparent hover:bg-white/5 border border-white/10 text-brandText/70 text-xs font-bold rounded-xl transition-all"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#0C0C0E] text-brandText flex overflow-hidden">
@@ -114,197 +545,263 @@ export default function App() {
         <Navbar
           onSearch={handleSearch}
           isFetching={loading}
-          hasError={!!error}
+          hasError={!!error && error !== 'API_KEY_REQUIRED'}
           activeTicker={activeTicker}
+          activeSidebarItem={activeSidebarItem}
         />
 
         {/* Content Wrapper */}
         <main className="flex-1 max-w-5xl w-full mx-auto px-6 md:px-8 py-8 space-y-6">
           
-          {/* Header Title / Detail Block */}
-          <div className="reveal-content opacity-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-            
-            {/* Asset Identity */}
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-full bg-[#18181B] border border-white/10 flex items-center justify-center shadow-md">
-                {meta.logo}
-              </div>
-              <div className="text-left">
-                <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                  {meta.name}
-                </h1>
-                <p className="text-xs text-brandText/40 font-mono mt-0.5 uppercase tracking-wider">
-                  {activeTicker} · {meta.sector}
-                </p>
-              </div>
-            </div>
+          {/* Render Active View */}
+          {activeSidebarItem === 'Home' && renderHome()}
+          {activeSidebarItem === 'Wallet' && renderWallet()}
+          {activeSidebarItem === 'Transfer' && renderTransfer()}
+          {activeSidebarItem === 'Shop' && renderShop()}
+          {activeSidebarItem === 'Personal' && renderPersonal()}
+          {activeSidebarItem === 'Settings' && renderSettings()}
+          {activeSidebarItem === 'Sessions' && renderSessions()}
+          {activeSidebarItem === 'Logout' && renderLogout()}
 
-            {/* Quick Actions */}
-            <div className="flex items-center space-x-2.5">
-              {/* Alert Toggle */}
-              <button 
-                onClick={() => setIsAlertActive(!isAlertActive)}
-                className={`p-2.5 rounded-xl border transition-all ${
-                  isAlertActive 
-                    ? 'bg-white/10 text-white border-white/20' 
-                    : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
-                }`}
-                title="Toggle Price Alerts"
-              >
-                <Bell className="w-4 h-4" />
-              </button>
-
-              {/* Star/Watch Toggle */}
-              <button 
-                onClick={() => setIsStarred(!isStarred)}
-                className={`p-2.5 rounded-xl border transition-all ${
-                  isStarred 
-                    ? 'bg-white/10 text-yellow-400 border-white/20' 
-                    : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
-                }`}
-                title="Add to Watchlist"
-              >
-                <Star className={`w-4 h-4 ${isStarred ? 'fill-yellow-400' : ''}`} />
-              </button>
-
-              {/* Sell Button */}
-              <button 
-                onClick={() => alert(`Sell order initialized for ${activeTicker}`)}
-                className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold bg-transparent text-white hover:bg-white/[0.04] transition-all"
-              >
-                Sell {meta.name.split(' ')[0]}
-              </button>
-
-              {/* Invest Button */}
-              <button 
-                onClick={() => alert(`Invest order initialized for ${activeTicker}`)}
-                className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 shadow-md transition-all flex items-center space-x-1"
-              >
-                <span>Invest {meta.name.split(' ')[0]}</span>
-              </button>
-            </div>
-
-          </div>
-
-          {/* Main Chart Section */}
-          <div className="reveal-content opacity-0">
-            <CustomChart 
-              ticker={activeTicker}
-              currentPrice={data?.c}
-              priceChange={data?.d}
-              percentChange={data?.dp}
-              isPositive={isPositive}
-            />
-          </div>
-
-          {/* Detailed Tab System */}
-          <div className="reveal-content opacity-0 space-y-4 pt-2">
-            
-            {/* Tabs Selector */}
-            <div className="flex border-b border-brandBorder pb-2 space-x-6">
-              {['Overview', 'Markets', 'Alerts', 'History'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`pb-2 text-xs font-semibold relative transition-colors ${
-                    activeTab === tab 
-                      ? 'text-white' 
-                      : 'text-brandText/45 hover:text-white/80'
-                  }`}
-                >
-                  {tab}
-                  {activeTab === tab && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Viewport */}
-            <div className="text-left min-h-[160px]">
-              
-              {activeTab === 'Overview' && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Details</h3>
-                  <p className="text-xs text-brandText/60 leading-relaxed font-sans max-w-2xl">
-                    {meta.desc}
-                  </p>
-                </div>
-              )}
-
-              {activeTab === 'Markets' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <VolatilityMeter data={data} ticker={activeTicker} />
-                  
-                  {/* Market Stats Grid */}
-                  <div className="bg-[#131316] border border-brandBorder rounded-3xl p-6 grid grid-cols-2 gap-4 h-[180px]">
-                    <div>
-                      <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Open Price</span>
-                      <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.o.toFixed(2) : '---'}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Prev Close</span>
-                      <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.pc.toFixed(2) : '---'}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day High</span>
-                      <span className="font-mono text-base font-bold text-brandAccent mt-1 block">${data ? data.h.toFixed(2) : '---'}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day Low</span>
-                      <span className="font-mono text-base font-bold text-red-500 mt-1 block">${data ? data.l.toFixed(2) : '---'}</span>
-                    </div>
+          {/* Invest View (Main stock trading dashboard) */}
+          {activeSidebarItem === 'Invest' && (
+            <div className="space-y-6">
+              {/* Header Title / Detail Block */}
+              <div className="reveal-content opacity-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                
+                {/* Asset Identity */}
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full bg-[#18181B] border border-white/10 flex items-center justify-center shadow-md">
+                    {meta.logo}
+                  </div>
+                  <div className="text-left">
+                    <h1 className="text-2xl font-extrabold tracking-tight text-white">
+                      {meta.name}
+                    </h1>
+                    <p className="text-xs text-brandText/40 font-mono mt-0.5 uppercase tracking-wider">
+                      {activeTicker} · {meta.sector}
+                    </p>
                   </div>
                 </div>
-              )}
 
-              {activeTab === 'Alerts' && (
-                <div className="space-y-4">
-                  <TelemetryFeed logs={telemetryLogs} />
+                {/* Quick Actions */}
+                <div className="flex items-center space-x-2.5">
+                  <button 
+                    onClick={() => setIsAlertActive(!isAlertActive)}
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      isAlertActive 
+                        ? 'bg-white/10 text-white border-white/20' 
+                        : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
+                    }`}
+                    title="Toggle Price Alerts"
+                  >
+                    <Bell className="w-4 h-4" />
+                  </button>
+
+                  <button 
+                    onClick={() => setIsStarred(!isStarred)}
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      isStarred 
+                        ? 'bg-white/10 text-yellow-400 border-white/20' 
+                        : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
+                    }`}
+                    title="Add to Watchlist"
+                  >
+                    <Star className={`w-4 h-4 ${isStarred ? 'fill-yellow-400' : ''}`} />
+                  </button>
+
+                  <button 
+                    onClick={() => alert(`Sell order initialized for ${activeTicker}`)}
+                    className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold bg-transparent text-white hover:bg-white/[0.04] transition-all"
+                  >
+                    Sell {meta.name.split(' ')[0]}
+                  </button>
+
+                  <button 
+                    onClick={() => alert(`Invest order initialized for ${activeTicker}`)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 shadow-md transition-all flex items-center space-x-1"
+                  >
+                    <span>Invest {meta.name.split(' ')[0]}</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Generic Fetch Error Alert */}
+              {error && error !== 'API_KEY_REQUIRED' && (
+                <div className="reveal-content flex items-center space-x-3 bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-xs">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>Failed to fetch stock data: <strong>{error}</strong>. Please verify your internet connection or Finnhub token validity.</span>
                 </div>
               )}
 
-              {activeTab === 'History' && (
-                <div className="bg-[#131316] border border-brandBorder rounded-3xl overflow-hidden">
-                  <table className="w-full text-left font-mono text-xs">
-                    <thead>
-                      <tr className="bg-[#1A1A1E] text-brandText/45 border-b border-brandBorder">
-                        <th className="p-4 uppercase tracking-wider font-semibold">Activity</th>
-                        <th className="p-4 uppercase tracking-wider font-semibold">Quantity</th>
-                        <th className="p-4 uppercase tracking-wider font-semibold">Price</th>
-                        <th className="p-4 uppercase tracking-wider font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-brandBorder">
-                      <tr className="hover:bg-white/[0.01] transition-colors">
-                        <td className="p-4 flex items-center space-x-2 text-white">
-                          <ArrowUpRight className="w-4 h-4 text-brandAccent" />
-                          <span>Buy {activeTicker}</span>
-                        </td>
-                        <td className="p-4 text-brandText/70">12 Shares</td>
-                        <td className="p-4 text-brandText/70">${data ? (data.c * 12).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '---'}</td>
-                        <td className="p-4">
-                          <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</span>
-                        </td>
-                      </tr>
-                      <tr className="hover:bg-white/[0.01] transition-colors">
-                        <td className="p-4 flex items-center space-x-2 text-white">
-                          <ArrowUpRight className="w-4 h-4 text-brandAccent" />
-                          <span>Buy {activeTicker}</span>
-                        </td>
-                        <td className="p-4 text-brandText/70">4 Shares</td>
-                        <td className="p-4 text-brandText/70">${data ? (data.c * 4).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '---'}</td>
-                        <td className="p-4">
-                          <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {/* Conditional Layout: Activation vs. Main Dashboard */}
+              {error === 'API_KEY_REQUIRED' ? (
+                <div className="reveal-content bg-[#131316] border border-brandBorder rounded-3xl p-8 max-w-2xl mx-auto text-left space-y-6 shadow-xl">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Activate Live Market Stream</h2>
+                    <p className="text-xs text-brandText/50 mt-1.5 leading-relaxed">
+                      To load live quotes and dynamic historical line charts, please link a free Finnhub API Key.
+                    </p>
+                  </div>
 
+                  <div className="space-y-3 font-sans text-xs text-brandText/70">
+                    <div className="flex items-start space-x-3">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/5 border border-white/10 text-white font-mono font-bold text-[10px]">1</span>
+                      <p className="pt-0.5">
+                        Sign up for a free developer account at <a href="https://finnhub.io/" target="_blank" rel="noopener noreferrer" className="text-brandAccent underline font-semibold hover:text-brandAccent/80">finnhub.io</a>
+                      </p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/5 border border-white/10 text-white font-mono font-bold text-[10px]">2</span>
+                      <p className="pt-0.5">Locate and copy your API Token from the dashboard landing page.</p>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/5 border border-white/10 text-white font-mono font-bold text-[10px]">3</span>
+                      <p className="pt-0.5">Paste the token string below to initialize your quant terminal.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <input
+                      type="password"
+                      value={settingsApiKey}
+                      onChange={(e) => setSettingsApiKey(e.target.value)}
+                      placeholder="Paste your Finnhub API Token here..."
+                      className="flex-1 bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 font-mono text-xs text-white focus:outline-none focus:border-white/20 transition-all"
+                    />
+                    <button
+                      onClick={() => handleSaveActivationKey(settingsApiKey)}
+                      className="px-6 py-3 bg-white text-black font-sans font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md whitespace-nowrap"
+                    >
+                      Activate Live Stream
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Main Chart Section */}
+                  <div className="reveal-content opacity-0">
+                    <CustomChart 
+                      ticker={activeTicker}
+                      currentPrice={data?.c}
+                      priceChange={data?.d}
+                      percentChange={data?.dp}
+                      isPositive={isPositive}
+                    />
+                  </div>
+
+                  {/* Detailed Tab System */}
+                  <div className="reveal-content opacity-0 space-y-4 pt-2">
+                    
+                    {/* Tabs Selector */}
+                    <div className="flex border-b border-brandBorder pb-2 space-x-6">
+                      {['Overview', 'Markets', 'Alerts', 'History'].map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveTab(tab)}
+                          className={`pb-2 text-xs font-semibold relative transition-colors ${
+                            activeTab === tab 
+                              ? 'text-white' 
+                              : 'text-brandText/45 hover:text-white/80'
+                          }`}
+                        >
+                          {tab}
+                          {activeTab === tab && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Tab Viewport */}
+                    <div className="text-left min-h-[160px]">
+                      
+                      {activeTab === 'Overview' && (
+                        <div className="space-y-3">
+                          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Details</h3>
+                          <p className="text-xs text-brandText/60 leading-relaxed font-sans max-w-2xl">
+                            {meta.desc}
+                          </p>
+                        </div>
+                      )}
+
+                      {activeTab === 'Markets' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                          <VolatilityMeter data={data} ticker={activeTicker} />
+                          
+                          <div className="bg-[#131316] border border-brandBorder rounded-3xl p-6 grid grid-cols-2 gap-4 h-[180px]">
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Open Price</span>
+                              <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.o.toFixed(2) : '---'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Prev Close</span>
+                              <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.pc.toFixed(2) : '---'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day High</span>
+                              <span className="font-mono text-base font-bold text-brandAccent mt-1 block">${data ? data.h.toFixed(2) : '---'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day Low</span>
+                              <span className="font-mono text-base font-bold text-red-500 mt-1 block">${data ? data.l.toFixed(2) : '---'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeTab === 'Alerts' && (
+                        <div className="space-y-4">
+                          <TelemetryFeed logs={telemetryLogs} />
+                        </div>
+                      )}
+
+                      {activeTab === 'History' && (
+                        <div className="bg-[#131316] border border-brandBorder rounded-3xl overflow-hidden">
+                          <table className="w-full text-left font-mono text-xs">
+                            <thead>
+                              <tr className="bg-[#1A1A1E] text-brandText/45 border-b border-brandBorder">
+                                <th className="p-4 uppercase tracking-wider font-semibold">Activity</th>
+                                <th className="p-4 uppercase tracking-wider font-semibold">Quantity</th>
+                                <th className="p-4 uppercase tracking-wider font-semibold">Price</th>
+                                <th className="p-4 uppercase tracking-wider font-semibold">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-brandBorder">
+                              <tr className="hover:bg-white/[0.01] transition-colors">
+                                <td className="p-4 flex items-center space-x-2 text-white">
+                                  <ArrowUpRight className="w-4 h-4 text-brandAccent" />
+                                  <span>Buy {activeTicker}</span>
+                                </td>
+                                <td className="p-4 text-brandText/70">12 Shares</td>
+                                <td className="p-4 text-brandText/70">${data ? (data.c * 12).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '---'}</td>
+                                <td className="p-4">
+                                  <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</span>
+                                </td>
+                              </tr>
+                              <tr className="hover:bg-white/[0.01] transition-colors">
+                                <td className="p-4 flex items-center space-x-2 text-white">
+                                  <ArrowUpRight className="w-4 h-4 text-brandAccent" />
+                                  <span>Buy {activeTicker}</span>
+                                </td>
+                                <td className="p-4 text-brandText/70">4 Shares</td>
+                                <td className="p-4 text-brandText/70">${data ? (data.c * 4).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '---'}</td>
+                                <td className="p-4">
+                                  <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
+          )}
 
         </main>
 

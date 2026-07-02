@@ -7,7 +7,7 @@ const COMPANY_NAMES = {
   NVDA: 'NVIDIA Corp',
 };
 
-export default function Navbar({ onSearch, isFetching, hasError, activeTicker }) {
+export default function Navbar({ onSearch, isFetching, hasError, activeTicker, activeSidebarItem = 'Invest' }) {
   const [query, setQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('FINNHUB_API_KEY') || '');
@@ -39,11 +39,11 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker })
       {/* Left Breadcrumb */}
       <div className="flex items-center space-x-2 font-sans text-sm">
         <span className="text-brandText/40 hover:text-brandText/70 cursor-pointer transition-colors">
-          Invest
+          {activeSidebarItem === 'Invest' ? 'Invest' : 'App'}
         </span>
         <span className="text-brandText/30 font-mono text-xs">/</span>
         <span className="text-white font-semibold">
-          {companyName}
+          {activeSidebarItem === 'Invest' ? companyName : activeSidebarItem}
         </span>
       </div>
 
