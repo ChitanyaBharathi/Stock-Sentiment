@@ -1,0 +1,168 @@
+import { useState, useEffect, useRef } from 'react';
+
+// Pre-defined base data for mock tickers so that the simulation feels realistic.
+const MOCK_BASE_DATA = {
+  AAPL: { c: 186.60, pc: 184.15, h: 187.25, l: 184.10, o: 185.00 },
+  TSLA: { c: 179.20, pc: 182.10, h: 183.40, l: 177.60, o: 181.80 },
+  NVDA: { c: 875.12, pc: 860.01, h: 884.80, l: 859.20, o: 863.00 },
+};
+
+export function useStockData(ticker) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [flashDirection, setFlashDirection] = useState(null); // 'up', 'down', or null
+  const prevPriceRef = useRef(null);
+  const telemetryLogsRef = useRef([]);
+  const [telemetryLogs, setTelemetryLogs] = useState([]);
+
+  // Load API key from localStorage if available
+  const apiKey = localStorage.getItem('FINNHUB_API_KEY');
+
+  const addTelemetryLog = (message) => {
+    const time = new Date().toLocaleTimeString();
+    const newLog = `[${time}] ${message}`;
+    telemetryLogsRef.current = [newLog, ...telemetryLogsRef.current].slice(0, 30);
+    setTelemetryLogs([...telemetryLogsRef.current]);
+  };
+
+  useEffect(() => {
+    if (!ticker) return;
+
+    setLoading(true);
+    setError(null);
+    prevPriceRef.current = null;
+
+    let intervalId;
+
+    const fetchData = async () => {
+      const currentApiKey = localStorage.getItem('FINNHUB_API_KEY');
+      if (currentApiKey) {
+        // Real API implementation
+        try {
+          addTelemetryLog(`Fetching live quote for ${ticker} from Finnhub API...`);
+          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${currentApiKey}`);
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          const payload = await res.json();
+          
+          if (payload.c === 0 && payload.pc === 0) {
+            throw new Error(`Symbol "${ticker}" not found.`);
+          }
+
+          // Check price movement
+          if (prevPriceRef.current !== null) {
+            if (payload.c > prevPriceRef.current) {
+              setFlashDirection('up');
+            } else if (payload.c < prevPriceRef.current) {
+              setFlashDirection('down');
+            }
+          }
+          prevPriceRef.current = payload.c;
+
+          setData(payload);
+          setLastUpdated(new Date());
+          addTelemetryLog(`Successfully received payload for ${ticker} (c: ${payload.c}, dp: ${payload.dp}%)`);
+        } catch (err) {
+          setError(err.message);
+          addTelemetryLog(`Error fetching ${ticker}: ${err.message}`);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Mock fetcher simulator
+        addTelemetryLog(`Simulating network request for ${ticker}...`);
+        
+        // Grab base mock values, or invent new ones if the symbol isn't predefined
+        const base = MOCK_BASE_DATA[ticker.toUpperCase()] || {
+          c: 100.00 + Math.random() * 200,
+          pc: 100.00 + Math.random() * 200,
+          h: 105.00,
+          l: 95.00,
+          o: 101.00
+        };
+
+        if (!MOCK_BASE_DATA[ticker.toUpperCase()]) {
+          base.h = base.c * 1.02;
+          base.l = base.c * 0.98;
+          base.o = (base.h + base.l) / 2;
+          base.pc = base.c * (1 + (Math.random() - 0.5) * 0.02);
+        }
+
+        // Initialize state
+        const calculatedD = base.c - base.pc;
+        const calculatedDp = (calculatedD / base.pc) * 100;
+
+        const payload = {
+          c: parseFloat(base.c.toFixed(2)),
+          d: parseFloat(calculatedD.toFixed(2)),
+          dp: parseFloat(calculatedDp.toFixed(2)),
+          h: parseFloat(base.h.toFixed(2)),
+          l: parseFloat(base.l.toFixed(2)),
+          o: parseFloat(base.o.toFixed(2)),
+          pc: parseFloat(base.pc.toFixed(2)),
+        };
+
+        // Reset tracking on ticker change
+        if (prevPriceRef.current === null) {
+          prevPriceRef.current = payload.c;
+          setData(payload);
+          setLoading(false);
+          setLastUpdated(new Date());
+          addTelemetryLog(`Payload simulated for ${ticker} (c: ${payload.c}, dp: ${payload.dp}%)`);
+        } else {
+          // Trigger fluctuation
+          const changePercent = (Math.random() - 0.5) * 0.008; // Max 0.4% change
+          const newPrice = parseFloat((prevPriceRef.current * (1 + changePercent)).toFixed(2));
+          const diff = parseFloat((newPrice - payload.pc).toFixed(2));
+          const diffPercent = parseFloat(((diff / payload.pc) * 100).toFixed(2));
+          const newHigh = parseFloat(Math.max(payload.h, newPrice).toFixed(2));
+          const newLow = parseFloat(Math.min(payload.l, newPrice).toFixed(2));
+
+          if (newPrice > prevPriceRef.current) {
+            setFlashDirection('up');
+          } else if (newPrice < prevPriceRef.current) {
+            setFlashDirection('down');
+          }
+
+          prevPriceRef.current = newPrice;
+          
+          setData({
+            ...payload,
+            c: newPrice,
+            d: diff,
+            dp: diffPercent,
+            h: newHigh,
+            l: newLow
+          });
+          setLastUpdated(new Date());
+          addTelemetryLog(`Fluctuation tick for ${ticker}: c = ${newPrice} (${diffPercent >= 0 ? '+' : ''}${diffPercent}%)`);
+        }
+      }
+    };
+
+    // Run first time
+    fetchData();
+
+    // Fluctuations/Fetches every 5 seconds
+    intervalId = setInterval(fetchData, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [ticker, apiKey]);
+
+  // Reset flash direction after 300ms
+  useEffect(() => {
+    if (flashDirection) {
+      const timer = setTimeout(() => {
+        setFlashDirection(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [flashDirection]);
+
+  return { data, loading, error, lastUpdated, flashDirection, telemetryLogs };
+}
