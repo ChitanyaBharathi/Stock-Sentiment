@@ -55,12 +55,7 @@ const COMPANY_META = {
   }
 };
 
-export default function App() {
-  // Configuration guards
-  if (!hasSupabaseConfig) {
-    return <SupabaseSetup />;
-  }
-
+function MainApp() {
   // Auth States
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -214,6 +209,8 @@ export default function App() {
   };
 
   // Deposit funds to Supabase profiles
+  // SECURITY WARNING: In a production app, client-side balance calculation is a massive CWE-602 (Client-Side Trust) vulnerability.
+  // We mock a secure backend call here but log a warning.
   const handleDepositCash = async (amount) => {
     if (!session?.user?.id || !profile) return;
     const numVal = parseFloat(amount);
@@ -222,6 +219,12 @@ export default function App() {
       return;
     }
 
+    console.warn("SECURITY ALERT (CWE-602): Deposit transaction initiated on client side. An attacker could bypass this to add arbitrary funds.");
+    
+    // In production, you would call a secure Supabase RPC or Edge Function like this:
+    // const { data, error } = await supabase.rpc('secure_deposit', { deposit_amount: numVal });
+    
+    // For this mockup, we proceed with the insecure method but alert the user.
     const nextBalance = parseFloat(profile.balance || 0) + numVal;
     const { error } = await supabase
       .from('profiles')
@@ -231,7 +234,7 @@ export default function App() {
     if (!error) {
       setProfile({ ...profile, balance: nextBalance });
       setWalletAmount('');
-      alert(`Deposit of $${numVal.toLocaleString()} completed successfully!`);
+      alert(`[MOCK SECURE] Deposit of $${numVal.toLocaleString()} completed successfully! (Check console for security warnings)`);
     } else {
       alert(`Transaction failed: ${error.message}`);
     }
@@ -352,9 +355,19 @@ export default function App() {
       </div>
 
       <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-4">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Deposit Cash</h3>
+        <div className="flex items-center space-x-2">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Deposit Cash</h3>
+          <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> VULNERABLE
+          </span>
+        </div>
         
-        <div className="flex gap-3">
+        <p className="text-[10px] text-red-400 font-mono">
+          WARNING: This functionality is currently executing entirely on the client, exposing a CWE-602 (Trust Boundary Violation).
+          Do not deploy to production without migrating this logic to a backend RPC.
+        </p>
+        
+        <div className="flex gap-3 mt-2">
           <input
             type="number"
             value={walletAmount}
@@ -395,8 +408,16 @@ export default function App() {
     <div className="reveal-content space-y-6 text-left max-w-2xl">
       <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Personal Profile Details</h3>
+          <div className="flex items-center space-x-2">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Personal Profile Details</h3>
+            <span className="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded-full text-[10px] font-bold">
+              REQUIRES RLS
+            </span>
+          </div>
           <p className="text-xs text-brandText/45 mt-1">Manage your verified credentials loaded from Supabase Auth.</p>
+          <p className="text-[10px] text-yellow-500/80 font-mono mt-2">
+            SECURITY NOTE: Make sure Supabase Row-Level Security (RLS) is enabled on the `profiles` table to prevent unauthorized writes.
+          </p>
         </div>
 
         <div className="space-y-4 font-sans text-xs">
@@ -817,4 +838,11 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+export default function App() {
+  if (!hasSupabaseConfig) {
+    return <SupabaseSetup />;
+  }
+  return <MainApp />;
 }

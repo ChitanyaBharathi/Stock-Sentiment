@@ -37,7 +37,15 @@ export default function AuthView() {
         setMode('login');
       }
     } catch (err) {
-      setErrorMsg(err.message);
+      let friendlyMessage = err.message;
+      if (err.message.includes('Password')) {
+        friendlyMessage = 'Password is too weak. Please use at least 6 characters.';
+      } else if (err.message.includes('email') || err.message.includes('invalid email')) {
+        friendlyMessage = 'The email address provided is invalid. Supabase requires a strictly formatted valid email.';
+      } else if (err.message.includes('already registered')) {
+        friendlyMessage = 'This email is already registered. Please sign in instead.';
+      }
+      setErrorMsg(`Authentication Error: ${friendlyMessage}`);
     } finally {
       setLoading(false);
     }

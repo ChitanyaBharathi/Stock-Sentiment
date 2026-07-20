@@ -18,6 +18,8 @@ export function useStockData(ticker) {
   const [telemetryLogs, setTelemetryLogs] = useState([]);
 
   // Load API key from env or localStorage if available
+  // SECURITY WARNING (CWE-200): Fetching API data directly from the frontend exposes this API key to the client's browser.
+  // In a real production application, this key should only be stored on the backend, and the frontend should proxy requests through your own server.
   const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '';
 
   const addTelemetryLog = (message) => {
