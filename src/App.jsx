@@ -72,10 +72,9 @@ function MainApp() {
   // Settings & forms state
   const [settingsApiKey, setSettingsApiKey] = useState(import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '');
   const [walletAmount, setWalletAmount] = useState('');
-  const [transferForm, setTransferForm] = useState({ asset: 'USD', destination: '', amount: '' });
   const [personalForm, setPersonalForm] = useState({ name: '', email: '', account: 'Premium Quant Partner' });
 
-  const { data, loading, error, flashDirection, telemetryLogs } = useStockData(activeTicker);
+  const { data, loading, error, telemetryLogs } = useStockData(activeTicker);
 
   const containerRef = useRef(null);
 
@@ -96,11 +95,11 @@ function MainApp() {
   // Fetch Supabase Database details
   const fetchProfile = async () => {
     if (!session?.user?.id) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
 
     if (data) {
       setProfile(data);
@@ -114,7 +113,7 @@ function MainApp() {
 
   const fetchWatchlist = async () => {
     if (!session?.user?.id) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('watchlists')
       .select('ticker')
       .eq('user_id', session.user.id);
@@ -129,6 +128,7 @@ function MainApp() {
       fetchProfile();
       fetchWatchlist();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   // Sync Star watchlist state

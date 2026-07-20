@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStockData } from '../hooks/useStockData';
-import { TrendingUp, TrendingDown, EyeOff, Activity, HelpCircle } from 'lucide-react';
+import { EyeOff } from 'lucide-react';
 
 function PillItem({ ticker, isActive, onClick }) {
   const { data, flashDirection } = useStockData(ticker);
@@ -35,7 +35,7 @@ function PillItem({ ticker, isActive, onClick }) {
   );
 }
 
-export default function PillNavTable({ tickers, activeTicker, onSelectTicker, activeData, loading }) {
+export default function PillNavTable({ tickers, activeTicker, onSelectTicker, activeData }) {
   const { data, flashDirection } = useStockData(activeTicker);
   const currentData = data || activeData;
 

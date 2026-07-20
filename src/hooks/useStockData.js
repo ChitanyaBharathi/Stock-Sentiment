@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
-// Pre-defined base data for mock tickers so that the simulation feels realistic.
-const MOCK_BASE_DATA = {
-  AAPL: { c: 186.60, pc: 184.15, h: 187.25, l: 184.10, o: 185.00 },
-  TSLA: { c: 179.20, pc: 182.10, h: 183.40, l: 177.60, o: 181.80 },
-  NVDA: { c: 875.12, pc: 860.01, h: 884.80, l: 859.20, o: 863.00 },
-};
+
 
 export function useStockData(ticker) {
   const [data, setData] = useState(null);
@@ -17,10 +13,6 @@ export function useStockData(ticker) {
   const telemetryLogsRef = useRef([]);
   const [telemetryLogs, setTelemetryLogs] = useState([]);
 
-  // Load API key from env or localStorage if available
-  // SECURITY WARNING (CWE-200): Fetching API data directly from the frontend exposes this API key to the client's browser.
-  // In a real production application, this key should only be stored on the backend, and the frontend should proxy requests through your own server.
-  const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '';
 
   const addTelemetryLog = (message) => {
     const time = new Date().toLocaleTimeString();
@@ -39,42 +31,42 @@ export function useStockData(ticker) {
     let intervalId;
 
     const fetchData = async () => {
-      const currentApiKey = import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '';
-      if (currentApiKey) {
-        // Real API implementation
-        try {
-          addTelemetryLog(`Fetching live quote for ${ticker} from Finnhub API...`);
-          const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${currentApiKey}`);
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-          }
-          const payload = await res.json();
-          
-          if (payload.c === 0 && payload.pc === 0) {
-            throw new Error(`Symbol "${ticker}" not found.`);
-          }
-
-          // Check price movement
-          if (prevPriceRef.current !== null) {
-            if (payload.c > prevPriceRef.current) {
-              setFlashDirection('up');
-            } else if (payload.c < prevPriceRef.current) {
-              setFlashDirection('down');
-            }
-          }
-          prevPriceRef.current = payload.c;
-
-          setData(payload);
-          setLastUpdated(new Date());
-          addTelemetryLog(`Successfully received payload for ${ticker} (c: ${payload.c}, dp: ${payload.dp}%)`);
-        } catch (err) {
-          setError(err.message);
-          addTelemetryLog(`Error fetching ${ticker}: ${err.message}`);
-        } finally {
-          setLoading(false);
+      // Real API implementation via secure Edge Function
+      try {
+        addTelemetryLog(`Requesting quote for ${ticker} from secure Edge Function...`);
+        const { data: payload, error: fnError } = await supabase.functions.invoke('get-stock', {
+          body: { ticker }
+        });
+        
+        if (fnError) {
+          throw new Error(`Edge Function error: ${fnError.message}`);
         }
-      } else {
-        setError('API_KEY_REQUIRED');
+        
+        if (!payload || payload.error) {
+           throw new Error(payload?.error || 'Unknown server error');
+        }
+        
+        if (payload.c === 0 && payload.pc === 0) {
+          throw new Error(`Symbol "${ticker}" not found.`);
+        }
+
+        // Check price movement
+        if (prevPriceRef.current !== null) {
+          if (payload.c > prevPriceRef.current) {
+            setFlashDirection('up');
+          } else if (payload.c < prevPriceRef.current) {
+            setFlashDirection('down');
+          }
+        }
+        prevPriceRef.current = payload.c;
+
+        setData(payload);
+        setLastUpdated(new Date());
+        addTelemetryLog(`Successfully received payload for ${ticker} (c: ${payload.c}, dp: ${payload.dp}%)`);
+      } catch (err) {
+        setError(err.message);
+        addTelemetryLog(`Error fetching ${ticker}: ${err.message}`);
+      } finally {
         setLoading(false);
       }
     };
@@ -88,7 +80,7 @@ export function useStockData(ticker) {
     return () => {
       clearInterval(intervalId);
     };
-  }, [ticker, apiKey]);
+  }, [ticker]);
 
   // Reset flash direction after 300ms
   useEffect(() => {
