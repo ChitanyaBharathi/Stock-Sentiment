@@ -1,0 +1,189 @@
+
+  -              <div className="w-12 h-12 rounded-full bg-[#18181B] border border-white/10 flex items-center 
+justify-center shadow-md">
+  -                {meta.logo}
+  +          {/* Render Active View */}
+  +          {activeSidebarItem === 'Home' && renderHome()}
+  +          {activeSidebarItem === 'Wallet' && renderWallet()}
+> +          {activeSidebarItem === 'Transfer' && renderTransfer()}
+  +          {activeSidebarItem === 'Shop' && renderShop()}
+  +          {activeSidebarItem === 'Personal' && renderPersonal()}
+  +          {activeSidebarItem === 'Settings' && (
+  +            <div className="reveal-content space-y-6 text-left max-w-2xl">
+  +              <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
+  +                <div>
+  +                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Settings & API 
+Configuration</h3>
+  +                  <p className="text-xs text-brandText/45 mt-1">Configure your Finnhub developers tokens directly 
+inside the dashboard panel.</p>
+  +                </div>
+  +                <div className="space-y-4 font-sans text-xs">
+  +                  <div className="space-y-2">
+  +                    <label className="block text-[10px] font-mono text-brandText/40 uppercase 
+tracking-widest">Finnhub API Key</label>
+  +                    <input 
+  +                      type="password"
+  +                      value={settingsApiKey}
+  +                      onChange={(e) => setSettingsApiKey(e.target.value)}
+  +                      placeholder="Paste token string..."
+  +                      className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 font-mono 
+text-white focus:outline-none focus:border-white/20 transition-all"
+  +                    />
+  +                  </div>
+  +                  <button
+  +                    onClick={() => {
+  +                      handleSaveApiKey(settingsApiKey);
+  +                      alert('Settings saved successfully!');
+  +                    }}
+  +                    className="px-6 py-3 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 
+transition-all shadow-md"
+  +                  >
+  +                    Save Token
+  +                  </button>
+  +                </div>
+                 </div>
+  -              <div className="text-left">
+  -                <h1 className="text-2xl font-extrabold tracking-tight text-white">
+  -                  {meta.name}
+  -                </h1>
+  -                <p className="text-xs text-brandText/40 font-mono mt-0.5 uppercase tracking-wider">
+  -                  {activeTicker} · {meta.sector}
+  -                </p>
+  +            </div>
+  +          )}
+  +          {activeSidebarItem === 'Sessions' && (
+  +            <div className="reveal-content space-y-6 text-left max-w-2xl">
+  +              <div>
+  +                <h2 className="text-xl font-bold text-white uppercase tracking-wider">Active Credentials 
+Sessions</h2>
+  +                <p className="text-xs text-brandText/45 mt-1">Review active logged sessions connected to your 
+profile.</p>
+  +              </div>
+  +              <div className="space-y-3">
+  +                <div className="bg-[#131316] border border-brandBorder p-5 rounded-2xl flex items-center 
+justify-between">
+  +                  <div className="flex items-center space-x-3.5">
+  +                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center 
+justify-center">
+  +        </div>
+  +      </div>
+  +    </div>
+  +  );
+  +
+> +  const renderTransfer = () => (
+  +    <div className="reveal-content space-y-6 text-left max-w-2xl">
+  +      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
+  +        <div>
+  +          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Transfer Assets</h3>
+  +          <p className="text-xs text-brandText/45 mt-1">Move cash or equities securely between linked profiles.</p>
+  +        </div>
+  +
+  +        <div className="space-y-4 font-sans text-xs">
+  +          {/* Transfer Type */}
+  +          <div className="space-y-2">
+  +            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Select 
+Asset</label>
+  +            <select 
+  +              value={transferForm.asset}
+  +              onChange={(e) => setTransferForm({...transferForm, asset: e.target.value})}
+  +              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white 
+focus:outline-none focus:border-white/20 transition-all font-mono"
+  +            >
+  +              <option value="USD">USD - Cash Balance</option>
+  +              <option value="AAPL">AAPL - Apple Equities</option>
+  +              <option value="TSLA">TSLA - Tesla Equities</option>
+  +              <option value="NVDA">NVDA - NVIDIA Equities</option>
+  +            </select>
+  +          </div>
+  +
+  +          {/* Target */}
+  +          <div className="space-y-2">
+  +            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Destination 
+Address / Email</label>
+  +            <input 
+  +              type="text"
+  +              value={transferForm.destination}
+  +              onChange={(e) => setTransferForm({...transferForm, destination: e.target.value})}
+  +              placeholder="e.g. transfer-id or verified email..."
+  +              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white 
+focus:outline-none focus:border-white/20 transition-all"
+  +            />
+  +          </div>
+  +
+  +          {/* Amount */}
+  +          <div className="space-y-2">
+  +            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Amount / 
+Shares count</label>
+  +            <input 
+  +              type="number"
+  +              value={transferForm.amount}
+  +              onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
+  +              placeholder="Amount..."
+  +              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white 
+focus:outline-none focus:border-white/20 transition-all font-mono"
+  +            />
+  +          </div>
+  +
+  +          <button
+  +            onClick={() => {
+  +              if (transferForm.destination && transferForm.amount) {
+  -              </div>
+  -            </div>
+  +          {/* Render Active View */}
+  +          {activeSidebarItem === 'Home' && renderHome()}
+  +          {activeSidebarItem === 'Wallet' && renderWallet()}
+> +          {activeSidebarItem === 'Transfer' && renderTransfer()}
+  +          {activeSidebarItem === 'Shop' && renderShop()}
+  +          {activeSidebarItem === 'Personal' && renderPersonal()}
+  +          {activeSidebarItem === 'Settings' && renderSettings()}
+  +          {activeSidebarItem === 'Sessions' && renderSessions()}
+  +          {activeSidebarItem === 'Logout' && renderLogout()}
+   
+  -            {/* Quick Actions */}
+  -            <div className="flex items-center space-x-2.5">
+  -              {/* Alert Toggle */}
+  -              <button 
+  -                onClick={() => setIsAlertActive(!isAlertActive)}
+  -                className={`p-2.5 rounded-xl border transition-all ${
+  -                  isAlertActive 
+  -                    ? 'bg-white/10 text-white border-white/20' 
+  -                    : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
+  -                }`}
+  -                title="Toggle Price Alerts"
+  -              >
+  -                <Bell className="w-4 h-4" />
+  -              </button>
+  -
+  -              {/* Star/Watch Toggle */}
+  -              <button 
+  -                onClick={() => setIsStarred(!isStarred)}
+  -                className={`p-2.5 rounded-xl border transition-all ${
+  -                  isStarred 
+  -                    ? 'bg-white/10 text-yellow-400 border-white/20' 
+  -                    : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
+  -                }`}
+  -                title="Add to Watchlist"
+  -              >
+  -                <Star className={`w-4 h-4 ${isStarred ? 'fill-yellow-400' : ''}`} />
+  -              </button>
+  -
+  -              {/* Sell Button */}
+  -              <button 
+  -                onClick={() => alert(`Sell order initialized for ${activeTicker}`)}
+  -                className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold bg-transparent 
+text-white hover:bg-white/[0.04] transition-all"
+  -              >
+  -                Sell {meta.name.split(' ')[0]}
+  -              </button>
+  -
+  -              {/* Invest Button */}
+  -              <button 
+  -                onClick={() => alert(`Invest order initialized for ${activeTicker}`)}
+  -                className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 shadow-md 
+transition-all flex items-center space-x-1"
+  -              >
+  -                <span>Invest {meta.name.split(' ')[0]}</span>
+  -              </button>
+  -            </div>
+
+

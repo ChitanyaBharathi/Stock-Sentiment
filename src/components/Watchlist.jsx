@@ -1,5 +1,6 @@
 import React from 'react';
 import { useStockData } from '../hooks/useStockData';
+import CustomChart from './CustomChart';
 
 function WatchlistItem({ ticker, isActive, onClick }) {
   const { data, flashDirection } = useStockData(ticker);
@@ -38,7 +39,7 @@ function WatchlistItem({ ticker, isActive, onClick }) {
           <span
             className={`font-mono text-xs font-medium block mt-1 ${
               isActive
-                ? isPositive ? 'text-brandAccent' : 'text-red-400'
+                ? isPositive ? 'text-brandAccent' : 'text-red-600'
                 : isPositive ? 'text-brandAccent' : 'text-red-500'
             }`}
           >
@@ -46,6 +47,19 @@ function WatchlistItem({ ticker, isActive, onClick }) {
           </span>
         </div>
       </div>
+      
+      {/* Dynamic Render of Custom Graph for Active Item */}
+      {isActive && (
+        <div className="mt-5 pt-5 border-t border-brandPrimary/10 animate-fade-in">
+          <CustomChart
+            ticker={ticker}
+            currentPrice={data?.c}
+            priceChange={data?.d}
+            percentChange={data?.dp}
+            isPositive={isPositive}
+          />
+        </div>
+      )}
     </div>
   );
 }

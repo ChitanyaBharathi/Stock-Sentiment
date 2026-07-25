@@ -8,17 +8,14 @@ import TelemetryFeed from './components/TelemetryFeed';
 import Watchlist from './components/Watchlist';
 import SupabaseSetup from './components/SupabaseSetup';
 import AuthView from './components/AuthView';
-
-import { useStockSentiment } from "./hooks/useStockSentiment";
-import SentimentWidget from "./components/SentimentWidget";
 import { supabase, hasSupabaseConfig } from './lib/supabaseClient';
-import {
-  Bell,
-  Star,
-  ArrowUpRight,
-  ShieldCheck,
-  AlertTriangle,
-  TrendingUp,
+import { 
+  Bell, 
+  Star, 
+  ArrowUpRight, 
+  ShieldCheck, 
+  AlertTriangle, 
+  TrendingUp, 
   CreditCard,
   LogOut,
   Monitor
@@ -58,7 +55,12 @@ const COMPANY_META = {
   }
 };
 
-function MainApp() {
+export default function App() {
+  // Configuration guards
+  if (!hasSupabaseConfig) {
+    return <SupabaseSetup />;
+  }
+
   // Auth States
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -71,16 +73,14 @@ function MainApp() {
   const [activeSidebarItem, setActiveSidebarItem] = useState('Home');
   const [isAlertActive, setIsAlertActive] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
-  const [timeRange, setTimeRange] = useState('1Y');
-
+  
   // Settings & forms state
   const [settingsApiKey, setSettingsApiKey] = useState(import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '');
   const [walletAmount, setWalletAmount] = useState('');
   const [transferForm, setTransferForm] = useState({ asset: 'USD', destination: '', amount: '' });
   const [personalForm, setPersonalForm] = useState({ name: '', email: '', account: 'Premium Quant Partner' });
 
-  const { data, candleData, loading, error, telemetryLogs } = useStockData(activeTicker);
-  const { sentimentData, loading: sentimentLoading } = useStockSentiment(activeTicker);
+  const { data, loading, error, flashDirection, telemetryLogs } = useStockData(activeTicker);
 
   const containerRef = useRef(null);
 
@@ -101,11 +101,11 @@ function MainApp() {
   // Fetch Supabase Database details
   const fetchProfile = async () => {
     if (!session?.user?.id) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', session.user.id)
-      .maybeSingle();
+      .single();
 
     if (data) {
       setProfile(data);
@@ -119,7 +119,7 @@ function MainApp() {
 
   const fetchWatchlist = async () => {
     if (!session?.user?.id) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('watchlists')
       .select('ticker')
       .eq('user_id', session.user.id);
@@ -134,7 +134,6 @@ function MainApp() {
       fetchProfile();
       fetchWatchlist();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
   // Sync Star watchlist state
@@ -215,8 +214,6 @@ function MainApp() {
   };
 
   // Deposit funds to Supabase profiles
-  // SECURITY WARNING: In a production app, client-side balance calculation is a massive CWE-602 (Client-Side Trust) vulnerability.
-  // We mock a secure backend call here but log a warning.
   const handleDepositCash = async (amount) => {
     if (!session?.user?.id || !profile) return;
     const numVal = parseFloat(amount);
@@ -225,12 +222,6 @@ function MainApp() {
       return;
     }
 
-    console.warn("SECURITY ALERT (CWE-602): Deposit transaction initiated on client side. An attacker could bypass this to add arbitrary funds.");
-
-    // In production, you would call a secure Supabase RPC or Edge Function like this:
-    // const { data, error } = await supabase.rpc('secure_deposit', { deposit_amount: numVal });
-
-    // For this mockup, we proceed with the insecure method but alert the user.
     const nextBalance = parseFloat(profile.balance || 0) + numVal;
     const { error } = await supabase
       .from('profiles')
@@ -240,7 +231,7 @@ function MainApp() {
     if (!error) {
       setProfile({ ...profile, balance: nextBalance });
       setWalletAmount('');
-      alert(`[MOCK SECURE] Deposit of $${numVal.toLocaleString()} completed successfully! (Check console for security warnings)`);
+      alert(`Deposit of $${numVal.toLocaleString()} completed successfully!`);
     } else {
       alert(`Transaction failed: ${error.message}`);
     }
@@ -334,13 +325,13 @@ function MainApp() {
 
       {/* Watchlist Section */}
       <div className="pt-2">
-        <Watchlist
-          tickers={tickers}
-          activeTicker={activeTicker}
+        <Watchlist 
+          tickers={tickers} 
+          activeTicker={activeTicker} 
           onSelectTicker={(ticker) => {
             setActiveTicker(ticker);
             setActiveSidebarItem('Invest');
-          }}
+          }} 
         />
       </div>
     </div>
@@ -361,19 +352,9 @@ function MainApp() {
       </div>
 
       <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-4">
-        <div className="flex items-center space-x-2">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Deposit Cash</h3>
-          <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> VULNERABLE
-          </span>
-        </div>
-
-        <p className="text-[10px] text-red-400 font-mono">
-          WARNING: This functionality is currently executing entirely on the client, exposing a CWE-602 (Trust Boundary Violation).
-          Do not deploy to production without migrating this logic to a backend RPC.
-        </p>
-
-        <div className="flex gap-3 mt-2">
+        <h3 className="text-sm font-bold text-white uppercase tracking-wider">Deposit Cash</h3>
+        
+        <div className="flex gap-3">
           <input
             type="number"
             value={walletAmount}
@@ -393,7 +374,7 @@ function MainApp() {
       {/* Linked Accounts */}
       <div className="space-y-3">
         <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Linked bank accounts</span>
-
+        
         <div className="bg-[#131316] border border-brandBorder p-5 rounded-2xl flex items-center justify-between">
           <div className="flex items-center space-x-3.5">
             <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
@@ -410,109 +391,22 @@ function MainApp() {
     </div>
   );
 
-  const renderTransfer = () => (
-    <div className="reveal-content space-y-6 text-left max-w-2xl">
-      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
-        <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Transfer Assets</h3>
-          <p className="text-xs text-brandText/45 mt-1">Move cash or equities securely between linked profiles.</p>
-        </div>
-
-        <div className="space-y-4 font-sans text-xs">
-          {/* Transfer Type */}
-          <div className="space-y-2">
-            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Select Asset</label>
-            <select
-              value={transferForm.asset}
-              onChange={(e) => setTransferForm({ ...transferForm, asset: e.target.value })}
-              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all font-mono"
-            >
-              <option value="USD">USD - Cash Balance</option>
-              <option value="AAPL">AAPL - Apple Equities</option>
-              <option value="TSLA">TSLA - Tesla Equities</option>
-              <option value="NVDA">NVDA - NVIDIA Equities</option>
-            </select>
-          </div>
-
-          {/* Target */}
-          <div className="space-y-2">
-            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Destination Address / Email</label>
-            <input
-              type="text"
-              value={transferForm.destination}
-              onChange={(e) => setTransferForm({ ...transferForm, destination: e.target.value })}
-              placeholder="e.g. transfer-id or verified email..."
-              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
-            />
-          </div>
-
-          {/* Amount */}
-          <div className="space-y-2">
-            <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Amount / Shares count</label>
-            <input
-              type="number"
-              value={transferForm.amount}
-              onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
-              placeholder="Amount..."
-              className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all font-mono"
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              if (transferForm.destination && transferForm.amount) {
-                alert(`Transfer initialized: Sending ${transferForm.amount} ${transferForm.asset} to ${transferForm.destination}`);
-                setTransferForm({ asset: 'USD', destination: '', amount: '' });
-              }
-            }}
-            className="px-6 py-3 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md"
-          >
-            Execute Transfer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderShop = () => (
-    <div className="reveal-content space-y-6 text-left max-w-2xl">
-      <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
-        <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Quant Shop</h3>
-          <p className="text-xs text-brandText/45 mt-1">Purchase premium algorithms and market data addons.</p>
-        </div>
-        <div className="flex items-center space-x-3 bg-brandBg/10 border border-brandBorder p-4 rounded-2xl text-xs text-brandText/50">
-          <AlertTriangle className="w-4 h-4 text-brandAccent" />
-          <span>Shop modules are currently offline in this environment.</span>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderPersonal = () => (
     <div className="reveal-content space-y-6 text-left max-w-2xl">
       <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
         <div>
-          <div className="flex items-center space-x-2">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">Personal Profile Details</h3>
-            <span className="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded-full text-[10px] font-bold">
-              REQUIRES RLS
-            </span>
-          </div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Personal Profile Details</h3>
           <p className="text-xs text-brandText/45 mt-1">Manage your verified credentials loaded from Supabase Auth.</p>
-          <p className="text-[10px] text-yellow-500/80 font-mono mt-2">
-            SECURITY NOTE: Make sure Supabase Row-Level Security (RLS) is enabled on the `profiles` table to prevent unauthorized writes.
-          </p>
         </div>
 
         <div className="space-y-4 font-sans text-xs">
           {/* Name */}
           <div className="space-y-2">
             <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Full Name</label>
-            <input
+            <input 
               type="text"
               value={personalForm.name}
-              onChange={(e) => setPersonalForm({ ...personalForm, name: e.target.value })}
+              onChange={(e) => setPersonalForm({...personalForm, name: e.target.value})}
               className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
             />
           </div>
@@ -520,10 +414,10 @@ function MainApp() {
           {/* Email */}
           <div className="space-y-2">
             <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Email Address</label>
-            <input
+            <input 
               type="email"
               value={personalForm.email}
-              onChange={(e) => setPersonalForm({ ...personalForm, email: e.target.value })}
+              onChange={(e) => setPersonalForm({...personalForm, email: e.target.value})}
               className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white/20 transition-all"
             />
           </div>
@@ -531,7 +425,7 @@ function MainApp() {
           {/* Account level */}
           <div className="space-y-2">
             <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Account Clearance Level</label>
-            <input
+            <input 
               type="text"
               value={personalForm.account}
               disabled
@@ -580,7 +474,7 @@ function MainApp() {
 
         {/* Content Wrapper */}
         <main className="flex-1 max-w-5xl w-full mx-auto px-6 md:px-8 py-8 space-y-6">
-
+          
           {/* Render Active View */}
           {activeSidebarItem === 'Home' && renderHome()}
           {activeSidebarItem === 'Wallet' && renderWallet()}
@@ -597,7 +491,7 @@ function MainApp() {
                 <div className="space-y-4 font-sans text-xs">
                   <div className="space-y-2">
                     <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Finnhub API Key</label>
-                    <input
+                    <input 
                       type="password"
                       value={settingsApiKey}
                       onChange={(e) => setSettingsApiKey(e.target.value)}
@@ -675,7 +569,7 @@ function MainApp() {
             <div className="space-y-6">
               {/* Header Title / Detail Block */}
               <div className="reveal-content opacity-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-
+                
                 {/* Asset Identity */}
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 rounded-full bg-[#18181B] border border-white/10 flex items-center justify-center shadow-md">
@@ -693,36 +587,38 @@ function MainApp() {
 
                 {/* Quick Actions */}
                 <div className="flex items-center space-x-2.5">
-                  <button
+                  <button 
                     onClick={() => setIsAlertActive(!isAlertActive)}
-                    className={`p-2.5 rounded-xl border transition-all ${isAlertActive
-                        ? 'bg-white/10 text-white border-white/20'
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      isAlertActive 
+                        ? 'bg-white/10 text-white border-white/20' 
                         : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
-                      }`}
+                    }`}
                     title="Toggle Price Alerts"
                   >
                     <Bell className="w-4 h-4" />
                   </button>
 
-                  <button
+                  <button 
                     onClick={handleToggleStar}
-                    className={`p-2.5 rounded-xl border transition-all ${isStarred
-                        ? 'bg-white/10 text-yellow-400 border-white/20'
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      isStarred 
+                        ? 'bg-white/10 text-yellow-400 border-white/20' 
                         : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
-                      }`}
+                    }`}
                     title="Add to Watchlist"
                   >
                     <Star className={`w-4 h-4 ${isStarred ? 'fill-yellow-400' : ''}`} />
                   </button>
 
-                  <button
+                  <button 
                     onClick={() => alert(`Sell order initialized for ${activeTicker}`)}
                     className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold bg-transparent text-white hover:bg-white/[0.04] transition-all"
                   >
                     Sell {meta.name.split(' ')[0]}
                   </button>
 
-                  <button
+                  <button 
                     onClick={() => alert(`Invest order initialized for ${activeTicker}`)}
                     className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 shadow-md transition-all flex items-center space-x-1"
                   >
@@ -786,8 +682,8 @@ function MainApp() {
               ) : (
                 <>
                   {/* Main Chart Section */}
-                  <div className="reveal-content opacity-0 mb-2">
-                    <CustomChart
+                  <div className="reveal-content opacity-0">
+                    <CustomChart 
                       ticker={activeTicker}
                       currentPrice={data?.c}
                       priceChange={data?.d}
@@ -798,17 +694,18 @@ function MainApp() {
 
                   {/* Detailed Tab System */}
                   <div className="reveal-content opacity-0 space-y-4 pt-2">
-
+                    
                     {/* Tabs Selector */}
                     <div className="flex border-b border-brandBorder pb-2 space-x-6">
                       {['Overview', 'Markets', 'Alerts', 'History'].map((tab) => (
                         <button
                           key={tab}
                           onClick={() => setActiveTab(tab)}
-                          className={`pb-2 text-xs font-semibold relative transition-colors ${activeTab === tab
-                              ? 'text-white'
+                          className={`pb-2 text-xs font-semibold relative transition-colors ${
+                            activeTab === tab 
+                              ? 'text-white' 
                               : 'text-brandText/45 hover:text-white/80'
-                            }`}
+                          }`}
                         >
                           {tab}
                           {activeTab === tab && (
@@ -820,7 +717,7 @@ function MainApp() {
 
                     {/* Tab Viewport */}
                     <div className="text-left min-h-[160px]">
-
+                      
                       {activeTab === 'Overview' && (
                         <div className="space-y-3">
                           <h3 className="text-sm font-bold text-white uppercase tracking-wider">Details</h3>
@@ -831,31 +728,27 @@ function MainApp() {
                       )}
 
                       {activeTab === 'Markets' && (
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                            <VolatilityMeter data={data} ticker={activeTicker} />
-
-                            <div className="bg-[#131316] border border-brandBorder rounded-3xl p-6 grid grid-cols-2 gap-4 h-[180px]">
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Open Price</span>
-                                <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.o.toFixed(2) : '---'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Prev Close</span>
-                                <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.pc.toFixed(2) : '---'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day High</span>
-                                <span className="font-mono text-base font-bold text-brandAccent mt-1 block">${data ? data.h.toFixed(2) : '---'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day Low</span>
-                                <span className="font-mono text-base font-bold text-red-500 mt-1 block">${data ? data.l.toFixed(2) : '---'}</span>
-                              </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                          <VolatilityMeter data={data} ticker={activeTicker} />
+                          
+                          <div className="bg-[#131316] border border-brandBorder rounded-3xl p-6 grid grid-cols-2 gap-4 h-[180px]">
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Open Price</span>
+                              <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.o.toFixed(2) : '---'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Prev Close</span>
+                              <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.pc.toFixed(2) : '---'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day High</span>
+                              <span className="font-mono text-base font-bold text-brandAccent mt-1 block">${data ? data.h.toFixed(2) : '---'}</span>
+                            </div>
+                            <div>
+                              <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day Low</span>
+                              <span className="font-mono text-base font-bold text-red-500 mt-1 block">${data ? data.l.toFixed(2) : '---'}</span>
                             </div>
                           </div>
-
-                          <SentimentWidget sentimentData={sentimentData} loading={sentimentLoading} ticker={activeTicker} />
                         </div>
                       )}
 
@@ -924,11 +817,4 @@ function MainApp() {
       </div>
     </div>
   );
-}
-
-export default function App() {
-  if (!hasSupabaseConfig) {
-    return <SupabaseSetup />;
-  }
-  return <MainApp />;
 }

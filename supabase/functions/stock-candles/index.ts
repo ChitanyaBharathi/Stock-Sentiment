@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -24,17 +23,21 @@ serve(async (req) => {
       throw new Error('Server misconfiguration: FINNHUB_API_KEY is missing');
     }
 
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`);
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - (30 * 24 * 60 * 60); // Last 30 days
+    const resolution = 'D'; // Daily candles
+
+    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`;
+    const res = await fetch(url);
     
     if (!res.ok) {
       throw new Error(`Finnhub API error: ${res.status}`);
     }
 
     const data = await res.json();
-    
-    // Check if symbol doesn't exist
-    if (data.c === 0 && data.pc === 0) {
-      throw new Error(`Symbol "${ticker}" not found.`);
+
+    if (data.s === 'no_data') {
+      throw new Error(`No candle data found for ${ticker}`);
     }
 
     return new Response(JSON.stringify(data), {
