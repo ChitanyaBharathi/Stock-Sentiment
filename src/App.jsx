@@ -21,7 +21,9 @@ import {
   TrendingUp,
   CreditCard,
   LogOut,
-  Monitor
+  Monitor,
+  SearchX,
+  Trash2
 } from 'lucide-react';
 import gsap from 'gsap';
 
@@ -54,6 +56,14 @@ const COMPANY_META = {
       <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.11 12.35l-2.61-1.51c-.3-.17-.5-.5-.5-.84V8.98c0-.34.2-.67.5-.84l2.61-1.51c.3-.17.7-.17 1 .01l2.61 1.51c.3.17.5.5.5.84v3.01c0 .34-.2.67-.5.84l-2.61 1.51c-.3.18-.7.18-1 .01z" />
       </svg>
+    )
+  },
+  GOOGL: {
+    name: 'Alphabet Inc (Google)',
+    sector: 'Technology',
+    desc: 'Alphabet Inc. is an American multinational technology conglomerate holding company created through a restructuring of Google. It is the world\'s third-largest technology company by revenue.',
+    logo: (
+      <span className="text-white font-extrabold text-xs">GOOG</span>
     )
   }
 };
@@ -154,13 +164,13 @@ function MainApp() {
 
       gsap.fromTo(
         '.reveal-content',
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, delay: 0.1, ease: 'power3.out', stagger: 0.1 }
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, delay: 0.05, ease: 'power3.out', stagger: 0.05 }
       );
     }, containerRef);
 
     return () => ctx.revert();
-  }, [activeSidebarItem, authLoading, session]);
+  }, [activeSidebarItem, activeTicker, authLoading, session]);
 
   if (authLoading) {
     return (
@@ -176,15 +186,40 @@ function MainApp() {
 
   // Handle new stock searches
   const handleSearch = async (newTicker) => {
-    if (!tickers.includes(newTicker)) {
-      setTickers([...tickers, newTicker]);
+    const formatted = newTicker.trim().toUpperCase();
+    if (!tickers.includes(formatted)) {
+      setTickers([...tickers, formatted]);
       // Insert to Supabase DB Watchlist
+      if (session?.user?.id) {
+        await supabase
+          .from('watchlists')
+          .insert({ user_id: session.user.id, ticker: formatted });
+      }
+    }
+    setActiveTicker(formatted);
+    setActiveSidebarItem('Invest');
+  };
+
+  // Remove ticker from watchlist
+  const handleRemoveTicker = async (tickerToRemove) => {
+    const nextTickers = tickers.filter(t => t !== tickerToRemove);
+    setTickers(nextTickers);
+
+    if (session?.user?.id) {
       await supabase
         .from('watchlists')
-        .insert({ user_id: session.user.id, ticker: newTicker });
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('ticker', tickerToRemove);
     }
-    setActiveTicker(newTicker);
-    setActiveSidebarItem('Invest');
+
+    if (activeTicker === tickerToRemove) {
+      if (nextTickers.length > 0) {
+        setActiveTicker(nextTickers[0]);
+      } else {
+        setActiveTicker('AAPL');
+      }
+    }
   };
 
   // Toggle watchlist star status
@@ -291,7 +326,7 @@ function MainApp() {
     <div className="reveal-content space-y-6 text-left">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-white/[0.03] to-transparent p-8 rounded-3xl border border-brandBorder">
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome back, {profile?.name || 'James'}.</h2>
+        <h2 className="text-3xl font-extrabold text-white tracking-tight">Welcome back, {profile?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || 'Trader'}.</h2>
         <p className="text-xs text-brandText/45 mt-1">Here is your market tracking overview for today.</p>
       </div>
 
@@ -341,6 +376,7 @@ function MainApp() {
             setActiveTicker(ticker);
             setActiveSidebarItem('Invest');
           }}
+          onRemoveTicker={handleRemoveTicker}
         />
       </div>
     </div>
@@ -575,7 +611,7 @@ function MainApp() {
           hasError={!!error && error !== 'API_KEY_REQUIRED'}
           activeTicker={activeTicker}
           activeSidebarItem={activeSidebarItem}
-          profileName={profile?.name || session?.user?.user_metadata?.name || 'James Gandolfini'}
+          profileName={profile?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || 'Trader'}
         />
 
         {/* Content Wrapper */}
@@ -732,15 +768,7 @@ function MainApp() {
 
               </div>
 
-              {/* Generic Fetch Error Alert */}
-              {error && error !== 'API_KEY_REQUIRED' && (
-                <div className="reveal-content flex items-center space-x-3 bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl text-xs">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>Failed to fetch stock data: <strong>{error}</strong>. Please verify your internet connection or Finnhub token validity.</span>
-                </div>
-              )}
-
-              {/* Conditional Layout: Activation vs. Main Dashboard */}
+              {/* Conditional Layout: API Key required vs. Stock Fetch Error / Symbol Not Found vs. Main Dashboard */}
               {error === 'API_KEY_REQUIRED' ? (
                 <div className="reveal-content bg-[#131316] border border-brandBorder rounded-3xl p-8 max-w-2xl mx-auto text-left space-y-6 shadow-xl">
                   <div>
@@ -780,6 +808,50 @@ function MainApp() {
                       className="px-6 py-3 bg-white text-black font-sans font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md whitespace-nowrap"
                     >
                       Activate Live Stream
+                    </button>
+                  </div>
+                </div>
+              ) : (error || !data) && !loading ? (
+                <div className="reveal-content bg-[#131316] border border-brandBorder rounded-3xl p-12 max-w-xl mx-auto text-center space-y-6 shadow-2xl my-6 animate-fade-in backdrop-blur-md">
+                  <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400 shadow-inner">
+                    <SearchX className="w-10 h-10" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-extrabold text-white tracking-tight">Stock Not Found</h2>
+                    <p className="text-xs text-brandText/50 leading-relaxed font-sans max-w-md mx-auto">
+                      We couldn't retrieve market pricing or telemetry for <strong className="text-white font-mono">{activeTicker}</strong>. The symbol may be invalid, delisted, or unquoted.
+                    </p>
+                  </div>
+
+                  {activeTicker.toUpperCase().includes('GOOGLE') && (
+                    <div className="bg-white/[0.03] border border-white/10 p-4 rounded-2xl text-xs text-left flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-wider block">Suggested Asset</span>
+                        <span className="font-bold text-white text-sm">GOOGL (Alphabet Inc.)</span>
+                      </div>
+                      <button
+                        onClick={() => handleSearch('GOOGL')}
+                        className="px-4 py-2 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md"
+                      >
+                        Switch to GOOGL
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+                    <button
+                      onClick={() => handleRemoveTicker(activeTicker)}
+                      className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Remove "{activeTicker}" from Watchlist</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveSidebarItem('Home')}
+                      className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs rounded-xl transition-all"
+                    >
+                      Return to Homepage
                     </button>
                   </div>
                 </div>

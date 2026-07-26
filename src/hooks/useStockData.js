@@ -40,7 +40,15 @@ export function useStockData(ticker) {
         });
         
         if (fnError) {
-          throw new Error(`Edge Function error: ${fnError.message}`);
+          // Extract message from error context if available
+          let msg = fnError.message || `Edge Function returned status error`;
+          try {
+            if (fnError.context) {
+              const body = await fnError.context.json();
+              if (body?.error) msg = body.error;
+            }
+          } catch (_) {}
+          throw new Error(msg);
         }
         
         if (!payload || payload.error) {
@@ -125,6 +133,8 @@ export function useStockData(ticker) {
         setLastUpdated(new Date());
         addTelemetryLog(`Successfully received payload for ${ticker} (c: ${payload.c}, dp: ${payload.dp}%)`);
       } catch (err) {
+        setData(null);
+        setCandleData(null);
         setError(err.message);
         addTelemetryLog(`Error fetching ${ticker}: ${err.message}`);
       } finally {

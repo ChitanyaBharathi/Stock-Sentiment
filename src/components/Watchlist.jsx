@@ -1,8 +1,9 @@
 import React from 'react';
 import { useStockData } from '../hooks/useStockData';
 import CustomChart from './CustomChart';
+import { X } from 'lucide-react';
 
-function WatchlistItem({ ticker, isActive, onClick }) {
+function WatchlistItem({ ticker, isActive, onClick, onRemove }) {
   const { data, flashDirection } = useStockData(ticker);
 
   const price = data ? data.c.toFixed(2) : '---';
@@ -19,13 +20,31 @@ function WatchlistItem({ ticker, isActive, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`interactive-card p-5 rounded-2xl cursor-pointer transition-all border text-left ${
+      className={`interactive-card p-5 rounded-2xl cursor-pointer transition-all border text-left group relative ${
         isActive
           ? 'bg-brandText text-brandPrimary border-brandText shadow-md'
           : 'bg-cardBg hover:bg-brandPrimary/40 border-brandText/10 text-brandText'
       }`}
     >
-      <div className="flex justify-between items-start">
+      {/* Remove Button */}
+      {onRemove && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(ticker);
+          }}
+          className={`absolute top-4 right-4 p-1 rounded-full transition-all opacity-80 md:opacity-0 group-hover:opacity-100 ${
+            isActive
+              ? 'hover:bg-black/10 text-brandPrimary'
+              : 'hover:bg-white/10 text-brandText/60 hover:text-white'
+          }`}
+          title={`Remove ${ticker} from watchlist`}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+
+      <div className="flex justify-between items-start pr-6">
         <div>
           <span className="font-mono font-bold text-sm tracking-wider">{ticker}</span>
           <p className={`text-[10px] uppercase tracking-widest mt-1 ${isActive ? 'text-brandPrimary/60' : 'text-brandText/40'}`}>
@@ -64,7 +83,7 @@ function WatchlistItem({ ticker, isActive, onClick }) {
   );
 }
 
-export default function Watchlist({ tickers, activeTicker, onSelectTicker }) {
+export default function Watchlist({ tickers, activeTicker, onSelectTicker, onRemoveTicker }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-2 px-1">
@@ -82,6 +101,7 @@ export default function Watchlist({ tickers, activeTicker, onSelectTicker }) {
             ticker={ticker}
             isActive={ticker === activeTicker}
             onClick={() => onSelectTicker(ticker)}
+            onRemove={onRemoveTicker}
           />
         ))}
       </div>

@@ -16,19 +16,20 @@ export default function AuthView() {
     setErrorMsg('');
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: normalizedEmail,
           password
         });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             data: {
-              name: name || 'James Gandolfini' // Fallback username
+              name: name || 'Trader' // Fallback username
             }
           }
         });
@@ -40,9 +41,7 @@ export default function AuthView() {
       let friendlyMessage = err.message;
       if (err.message.includes('Password')) {
         friendlyMessage = 'Password is too weak. Please use at least 6 characters.';
-      } else if (err.message.includes('email') || err.message.includes('invalid email')) {
-        friendlyMessage = 'The email address provided is invalid. Supabase requires a strictly formatted valid email.';
-      } else if (err.message.includes('already registered')) {
+      } else if (err.message.toLowerCase().includes('already registered')) {
         friendlyMessage = 'This email is already registered. Please sign in instead.';
       }
       setErrorMsg(`Authentication Error: ${friendlyMessage}`);
@@ -104,7 +103,7 @@ export default function AuthView() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="James Gandolfini"
+                  placeholder="Enter your name"
                   className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl py-3 pl-10 pr-4 font-sans text-xs text-white focus:outline-none focus:border-white/20 transition-all"
                 />
                 <User className="absolute left-3.5 top-3.5 w-4 h-4 text-brandText/35" />

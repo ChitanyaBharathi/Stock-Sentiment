@@ -100,11 +100,17 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
         </div>
       </div>
 
-      {/* SVG Canvas */}
-      <div className="relative h-56 w-full">
-        {points.length > 0 ? (
-          <svg 
-            viewBox="0 0 800 200" 
+      {/* SVG Vector Line Chart Container */}
+      <div className="relative h-44 w-full flex items-center justify-center">
+        {points.length === 0 ? (
+          <div className="text-center space-y-2">
+            <span className="font-mono text-xs text-brandText/40 uppercase tracking-widest block">
+              {!currentPrice ? 'NO MARKET DATA FOR SYMBOL' : 'LOADING CHART STREAMS...'}
+            </span>
+          </div>
+        ) : (
+          <svg
+            viewBox="0 0 800 200"
             className="w-full h-full overflow-visible"
             preserveAspectRatio="none"
           >
@@ -146,10 +152,6 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
               className="animate-pulse"
             />
           </svg>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center font-mono text-xs text-brandText/30">
-            LOADING CHART STREAMS...
-          </div>
         )}
       </div>
 
