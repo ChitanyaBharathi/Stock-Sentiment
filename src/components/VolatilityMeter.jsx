@@ -14,50 +14,47 @@ export default function VolatilityMeter({ data, ticker }) {
   }
 
   return (
-    <div className="bg-cardBg border border-brandText/10 rounded-3xl p-6 text-left relative overflow-hidden flex flex-col justify-between h-[180px]">
+    <div className="bg-onyx border border-graphite rounded-[10px] p-6 text-left relative overflow-hidden flex flex-col justify-between">
       <div>
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] font-mono tracking-widest text-brandText/50 uppercase">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-eyebrow text-smoke uppercase tracking-widest font-semibold">
             Volatility Meter
           </span>
-          <span className="text-[10px] font-mono text-brandText/60 font-semibold bg-brandBg/60 px-1.5 py-0.5 rounded">
+          <span className="text-[10px] font-sans text-fog font-medium bg-carbon px-2 py-1 rounded-full border border-graphite">
             SPREAD: ${spread.toFixed(2)}
           </span>
         </div>
-        <span className="text-[10px] font-mono text-brandText/40">
-          Spread index for {ticker}
-        </span>
       </div>
 
       {/* SVG Bar Visualizer */}
-      <div className="my-2">
-        <div className="relative h-1 w-full bg-brandText/10 rounded-full">
+      <div className="my-4">
+        <div className="relative h-1.5 w-full bg-carbon border border-graphite rounded-full">
           {/* Daily range line */}
-          <div className="absolute top-0 bottom-0 left-0 right-0 rounded-full bg-brandText/20" />
+          <div className="absolute top-0 bottom-0 left-0 right-0 rounded-full" />
           
           {/* Current position marker */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-brandAccent border-2 border-cardBg shadow-sm transition-all duration-500 ease-out"
+            className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-paper-white border border-graphite shadow-sm transition-all duration-500 ease-out"
             style={{ left: `calc(${relativePosition}% - 7px)` }}
           />
         </div>
-        <div className="flex justify-between font-mono text-[9px] text-brandText/40 mt-2">
+        <div className="flex justify-between font-sans text-[11px] text-smoke mt-3 font-medium">
           <span>L: ${payload.l.toFixed(2)}</span>
-          <span className="font-semibold text-brandText/60">C: ${payload.c.toFixed(2)}</span>
+          <span className="font-semibold text-bone">C: ${payload.c.toFixed(2)}</span>
           <span>H: ${payload.h.toFixed(2)}</span>
         </div>
       </div>
 
-      <div className="flex justify-between items-end">
+      <div className="flex justify-between items-end pt-2 border-t border-graphite">
         <div>
-          <span className="block text-[9px] font-mono text-brandText/40 uppercase">Intraday Range</span>
-          <span className="font-mono text-xs font-bold text-brandText">
+          <span className="block text-[10px] font-sans text-smoke uppercase tracking-widest font-semibold mb-1">Intraday Range</span>
+          <span className="font-sans text-xs font-medium text-bone">
             {pctSpread.toFixed(2)}% of Open
           </span>
         </div>
         <div className="text-right">
-          <span className="block text-[9px] font-mono text-brandText/40 uppercase">Status</span>
-          <span className="font-mono text-xs font-bold text-brandAccent uppercase">
+          <span className="block text-[10px] font-sans text-smoke uppercase tracking-widest font-semibold mb-1">Status</span>
+          <span className="font-sans text-xs font-medium text-copper uppercase">
             {pctSpread > 2 ? 'High Volatility' : 'Stable Data'}
           </span>
         </div>

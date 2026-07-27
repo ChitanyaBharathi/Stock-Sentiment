@@ -85,17 +85,17 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
   const gradientId = `chartGradient-${ticker}-${activeTimeline}`;
 
   return (
-    <div className="w-full bg-[#131316] border border-brandBorder rounded-3xl p-6 md:p-8 flex flex-col justify-between text-left select-none relative overflow-hidden space-y-4">
+    <div className="w-full bg-onyx rounded-[10px] p-6 md:p-8 flex flex-col justify-between text-left select-none relative overflow-hidden space-y-4">
       
       {/* Top Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1.5 bg-[#1B1B1E] px-2.5 py-1 rounded-lg border border-white/5">
+          <div className="flex items-center space-x-1.5 bg-carbon px-2.5 py-1 rounded-full border border-graphite">
             <span className="text-[11px]">🇺🇸</span>
-            <span className="font-mono text-[10px] font-bold text-white/80 tracking-wider">USD</span>
+            <span className="font-sans text-[12px] font-medium text-bone">USD</span>
           </div>
-          <span className="text-[10px] font-mono text-brandText/30 uppercase tracking-widest">
-            USD · NASDAQ
+          <span className="text-[13px] font-sans text-smoke uppercase tracking-widest font-semibold">
+            NASDAQ
           </span>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
       <div className="relative h-44 w-full flex items-center justify-center">
         {points.length === 0 ? (
           <div className="text-center space-y-2">
-            <span className="font-mono text-xs text-brandText/40 uppercase tracking-widest block">
+            <span className="font-sans text-xs text-smoke uppercase tracking-widest block font-medium">
               {!currentPrice ? 'NO MARKET DATA FOR SYMBOL' : 'LOADING CHART STREAMS...'}
             </span>
           </div>
@@ -115,6 +115,12 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
             preserveAspectRatio="none"
           >
             <defs>
+              <linearGradient id="gildedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgb(174, 147, 87)" />
+                <stop offset="40%" stopColor="rgb(255, 240, 204)" />
+                <stop offset="70%" stopColor="rgb(174, 147, 87)" />
+                <stop offset="100%" stopColor="rgba(189, 157, 79, 0)" />
+              </linearGradient>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={strokeColor} stopOpacity="0.18" />
                 <stop offset="100%" stopColor={strokeColor} stopOpacity="0.00" />
@@ -122,9 +128,9 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
             </defs>
 
             {/* Grid horizontal lines */}
-            <line x1="0" y1="50" x2="800" y2="50" stroke="rgba(255,255,255,0.015)" strokeWidth="1" />
-            <line x1="0" y1="100" x2="800" y2="100" stroke="rgba(255,255,255,0.015)" strokeWidth="1" />
-            <line x1="0" y1="150" x2="800" y2="150" stroke="rgba(255,255,255,0.015)" strokeWidth="1" />
+            <line x1="0" y1="50" x2="800" y2="50" stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
+            <line x1="0" y1="100" x2="800" y2="100" stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
+            <line x1="0" y1="150" x2="800" y2="150" stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
 
             {/* Gradient Fill Path */}
             <path
@@ -159,24 +165,27 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
       <div className="flex justify-between items-end pt-2">
         {/* Live Price display */}
         <div className="space-y-1">
-          <div className="font-sans text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+          <div className="font-serif text-[64px] leading-none tracking-[0.01em] text-paper-white">
             ${currentPrice ? currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
           </div>
-          <div className={`font-sans text-xs font-semibold ${isPositive ? 'text-brandAccent' : 'text-red-500'}`}>
+          <div className="font-sans text-[16px] text-bone">
             {isPositive ? '+' : ''}${priceChange ? priceChange.toFixed(2) : '0.00'} ({isPositive ? '+' : ''}{percentChange ? percentChange.toFixed(2) : '0.00'}%)
           </div>
         </div>
 
         {/* Timeline Selector */}
-        <div className="flex bg-[#18181B]/80 p-0.5 rounded-full border border-white/5 space-x-0.5">
+        <div className="flex space-x-1">
           {timelines.map((timeline) => (
             <button
               key={timeline}
-              onClick={() => setActiveTimeline(timeline)}
-              className={`px-3 py-1.5 rounded-full font-sans text-[10px] font-bold transition-all ${
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTimeline(timeline);
+              }}
+              className={`px-3 py-1.5 rounded-full font-sans text-[13px] font-medium transition-all ${
                 activeTimeline === timeline
-                  ? 'bg-white text-black shadow-sm font-semibold'
-                  : 'text-brandText/45 hover:text-white/80'
+                  ? 'bg-paper-white text-obsidian'
+                  : 'bg-transparent border border-graphite text-fog hover:text-white'
               }`}
             >
               {timeline}
@@ -184,7 +193,6 @@ export default function CustomChart({ ticker, currentPrice, priceChange, percent
           ))}
         </div>
       </div>
-
     </div>
   );
 }

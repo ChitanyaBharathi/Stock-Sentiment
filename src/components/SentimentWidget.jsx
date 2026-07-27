@@ -19,16 +19,16 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
 
   if (loading || !sentimentData) {
     return (
-      <div className="bg-[#111114] border border-white/10 rounded-3xl p-6 space-y-4 animate-pulse">
+      <div className="bg-carbon border border-graphite rounded-3xl p-6 space-y-4 animate-pulse h-full">
         <div className="flex justify-between items-center">
-          <div className="h-5 w-44 bg-white/10 rounded-lg" />
-          <div className="h-6 w-24 bg-white/10 rounded-full" />
+          <div className="h-5 w-44 bg-graphite rounded-lg" />
+          <div className="h-6 w-24 bg-graphite rounded-full" />
         </div>
-        <div className="h-12 w-36 bg-white/10 rounded-xl mt-2" />
-        <div className="h-3 w-full bg-white/10 rounded-full mt-4" />
+        <div className="h-12 w-36 bg-graphite rounded-xl mt-2" />
+        <div className="h-3 w-full bg-graphite rounded-full mt-4" />
         <div className="space-y-3 pt-4">
-          <div className="h-20 bg-white/5 rounded-2xl" />
-          <div className="h-20 bg-white/5 rounded-2xl" />
+          <div className="h-20 bg-onyx rounded-2xl" />
+          <div className="h-20 bg-onyx rounded-2xl" />
         </div>
       </div>
     );
@@ -45,6 +45,18 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
 
   const isBullish = sentimentLabel === 'Bullish' || bullishPercent > bearishPercent;
   const isBearish = sentimentLabel === 'Bearish' || bearishPercent > bullishPercent;
+
+  // Calculate exact sentiment counts & distribution
+  const totalArticles = articles.length || 1;
+  const bullCount = articles.filter((a) => a.sentiment === 'Bullish').length;
+  const bearCount = articles.filter((a) => a.sentiment === 'Bearish').length;
+  const neutralCount = articles.filter((a) => a.sentiment === 'Neutral').length;
+
+  const bullPct = articles.length > 0 ? Math.round((bullCount / totalArticles) * 100) : bullishPercent;
+  const bearPct = articles.length > 0 ? Math.round((bearCount / totalArticles) * 100) : bearishPercent;
+  const neutralPct = Math.max(0, 100 - bullPct - bearPct);
+
+  const netBias = bullPct >= bearPct ? `+${bullPct - bearPct}% Net Bull` : `${bearPct - bullPct}% Net Bear`;
 
   // Filter articles based on selected tab
   const filteredArticles = articles.filter((art) => {
@@ -63,9 +75,8 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
     const diffDays = Math.round(diffHours / 24);
     return `${diffDays}d ago`;
   };
-
   return (
-    <div className="bg-[#111114] border border-white/10 rounded-3xl p-6 text-left space-y-6 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+    <div className="bg-carbon border border-graphite rounded-[10px] p-6 text-left space-y-6 relative overflow-hidden h-full">
       {/* Glow Ambient Highlight */}
       <div
         className={`absolute -top-24 -right-24 w-60 h-60 rounded-full blur-3xl opacity-15 pointer-events-none ${
@@ -125,12 +136,12 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
       </div>
 
       {/* Main Metrics Card */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#09090B] border border-white/10 p-5 rounded-2xl relative">
-        {/* Left Metric: Bullish Ratio */}
-        <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-onyx border border-graphite p-5 rounded-2xl relative">
+        {/* Left Metric: Sentiment Breakdown */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider font-semibold">
-              Bullish Ratio
+              Sentiment Distribution
             </span>
             <span className="text-[10px] font-mono text-gray-500">
               {articlesCount} Headlines Analyzed
@@ -138,37 +149,60 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
           </div>
 
           <div className="flex items-baseline space-x-3">
-            <span className="text-4xl font-extrabold text-white tracking-tight font-mono">
-              {bullishPercent}%
+            <span className="text-3xl font-extrabold text-white tracking-tight font-mono">
+              {sentimentLabel}
             </span>
-            <div className="flex items-center space-x-1">
-              <span className={`text-xs font-mono font-bold ${isBullish ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {bullishPercent > bearishPercent ? `+${bullishPercent - bearishPercent}% Net Bull` : `${bearishPercent - bullishPercent}% Net Bear`}
-              </span>
-            </div>
+            <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${isBullish ? 'bg-emerald-500/10 text-emerald-400' : isBearish ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'}`}>
+              {netBias}
+            </span>
           </div>
 
-          {/* Dual Bar Indicator */}
-          <div className="space-y-1.5 pt-1">
-            <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden flex border border-white/10 p-0.5">
-              <div
-                className="h-full bg-emerald-400 rounded-l-full transition-all duration-700 ease-out"
-                style={{ width: `${bullishPercent}%` }}
-              />
-              <div
-                className="h-full bg-rose-500 rounded-r-full transition-all duration-700 ease-out"
-                style={{ width: `${bearishPercent}%` }}
-              />
+          {/* Tri-Color Full Width Progress Bar */}
+          <div className="space-y-2 pt-1">
+            <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden flex border border-white/10 p-0.5 gap-0.5">
+              {bullPct > 0 && (
+                <div
+                  className="h-full bg-emerald-500 rounded-l transition-all duration-700 ease-out"
+                  style={{ width: `${bullPct}%` }}
+                  title={`Bullish: ${bullPct}%`}
+                />
+              )}
+              {neutralPct > 0 && (
+                <div
+                  className={`h-full bg-slate-600 transition-all duration-700 ease-out ${bullPct === 0 ? 'rounded-l' : ''} ${bearPct === 0 ? 'rounded-r' : ''}`}
+                  style={{ width: `${neutralPct}%` }}
+                  title={`Neutral: ${neutralPct}%`}
+                />
+              )}
+              {bearPct > 0 && (
+                <div
+                  className="h-full bg-rose-500 rounded-r transition-all duration-700 ease-out"
+                  style={{ width: `${bearPct}%` }}
+                  title={`Bearish: ${bearPct}%`}
+                />
+              )}
             </div>
-            <div className="flex justify-between text-[10px] font-mono font-semibold">
-              <span className="text-emerald-400">Bull {bullishPercent}%</span>
-              <span className="text-rose-400">Bear {bearishPercent}%</span>
+
+            {/* Percent Legend Pills */}
+            <div className="flex items-center justify-between text-[10px] font-mono font-semibold pt-0.5">
+              <span className="text-emerald-400 flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span>Bull {bullPct}% ({bullCount})</span>
+              </span>
+              <span className="text-gray-400 flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 inline-block" />
+                <span>Neutral {neutralPct}% ({neutralCount})</span>
+              </span>
+              <span className="text-rose-400 flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block" />
+                <span>Bear {bearPct}% ({bearCount})</span>
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Right Metric: Media Buzz & FinBERT Status */}
-        <div className="md:border-l md:border-white/10 md:pl-5 flex flex-col justify-between space-y-3">
+        {/* Right Metric: Media Buzz Velocity */}
+        <div className="border-t border-graphite pt-4 flex flex-col justify-between space-y-3">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider font-semibold">
@@ -183,7 +217,7 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
               <span className="text-3xl font-bold text-white font-mono">
                 {buzzScore}
               </span>
-              <span className="text-xs text-gray-500 font-mono">/ 100 Velocity</span>
+              <span className="text-xs text-gray-500 font-mono">/ 100 Velocity Index</span>
             </div>
           </div>
 
@@ -210,18 +244,24 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
 
           {/* Filter Tabs */}
           {isExpanded && (
-            <div className="flex items-center space-x-1 bg-[#09090B] p-1 rounded-xl border border-white/10">
-              {['ALL', 'BULLISH', 'BEARISH', 'NEUTRAL'].map((tab) => (
+            <div className="flex items-center space-x-1 bg-onyx p-1 rounded-xl border border-graphite">
+              {[
+                { label: 'ALL', count: articles.length },
+                { label: 'BULLISH', count: bullCount },
+                { label: 'BEARISH', count: bearCount },
+                { label: 'NEUTRAL', count: neutralCount },
+              ].map((tab) => (
                 <button
-                  key={tab}
-                  onClick={() => setFilter(tab)}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
-                    filter === tab
+                  key={tab.label}
+                  onClick={() => setFilter(tab.label)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all flex items-center space-x-1 ${
+                    filter === tab.label
                       ? 'bg-white/15 text-white shadow-sm border border-white/10'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  {tab}
+                  <span>{tab.label}</span>
+                  <span className="text-[9px] opacity-60">({tab.count})</span>
                 </button>
               ))}
             </div>
@@ -232,7 +272,7 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
         {isExpanded && (
           <div className="space-y-3">
             {filteredArticles.length === 0 ? (
-              <div className="text-center py-8 font-mono text-xs text-gray-500 bg-[#09090B] rounded-2xl border border-white/5">
+              <div className="text-center py-8 font-mono text-xs text-gray-500 bg-onyx rounded-2xl border border-graphite">
                 NO {filter} HEADLINES DETECTED.
               </div>
             ) : (
@@ -244,7 +284,7 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
                 return (
                   <div
                     key={idx}
-                    className="bg-[#09090B] border border-white/10 hover:border-white/20 p-4 rounded-2xl transition-all duration-200 space-y-3 group hover:shadow-lg"
+                    className="bg-onyx border border-graphite hover:border-slate p-4 rounded-2xl transition-all duration-200 space-y-3 group text-left"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <a
@@ -263,7 +303,7 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
                             ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                             : isArtBearish
                             ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                            : 'bg-white/5 text-gray-400 border-white/10'
+                            : 'bg-slate-500/15 text-slate-300 border-slate-500/30'
                         }`}
                       >
                         <span>{art.sentiment}</span>
@@ -282,7 +322,7 @@ export default function SentimentWidget({ sentimentData, loading, ticker }) {
                         <span className="text-[9px] text-gray-400 uppercase font-semibold">FinBERT Confidence:</span>
                         <div className="w-12 h-1.5 bg-white/10 rounded-full overflow-hidden">
                           <div
-                            className={`h-full ${isArtBullish ? 'bg-emerald-400' : isArtBearish ? 'bg-rose-400' : 'bg-amber-400'}`}
+                            className={`h-full ${isArtBullish ? 'bg-emerald-400' : isArtBearish ? 'bg-rose-400' : 'bg-slate-400'}`}
                             style={{ width: `${conf}%` }}
                           />
                         </div>

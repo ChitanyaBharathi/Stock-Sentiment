@@ -10,8 +10,8 @@ export default function TelemetryFeed({ logs }) {
   }, [logs]);
 
   return (
-    <div className="bg-brandText text-brandPrimary border border-brandText/20 rounded-3xl p-6 h-[180px] flex flex-col justify-between text-left relative overflow-hidden">
-      <div className="flex justify-between items-center border-b border-brandPrimary/10 pb-3 mb-3 select-none">
+    <div className="bg-onyx text-bone border border-graphite rounded-3xl p-6 h-[180px] flex flex-col justify-between text-left relative overflow-hidden">
+      <div className="flex justify-between items-center border-b border-graphite pb-3 mb-3 select-none">
         <span className="text-[10px] font-mono tracking-widest text-brandPrimary/60 uppercase">
           Live Telemetry Feed
         </span>

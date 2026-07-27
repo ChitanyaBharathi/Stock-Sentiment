@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Settings, Loader2, TrendingUp } from 'lucide-react';
+import { Search, Loader2, TrendingUp } from 'lucide-react';
 
 const POPULAR_EQUITIES = [
   { symbol: 'AAPL', description: 'Apple Inc', type: 'Common Stock' },
@@ -28,8 +28,6 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '');
 
   const dropdownRef = useRef(null);
 
@@ -50,7 +48,7 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
       let searchMatches = [];
 
       // 1. Try Finnhub Search API if token exists
-      const effectiveKey = import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY');
+      const effectiveKey = localStorage.getItem('FINNHUB_API_KEY');
       if (effectiveKey) {
         try {
           const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(trimmed)}&token=${effectiveKey}`);
@@ -110,38 +108,24 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
     if (results.length > 0) {
       handleSelectSymbol(results[0].symbol);
     } else if (query.trim()) {
-      // Validate query matches popular tickers or format
       const qUpper = query.trim().toUpperCase();
-      handleSelectSymbol(qUpper);
+      const match = POPULAR_EQUITIES.find(item => item.symbol === qUpper || item.description.toUpperCase().includes(qUpper));
+      if (match) {
+        handleSelectSymbol(match.symbol);
+      } else {
+        handleSelectSymbol(qUpper);
+      }
     }
-  };
-
-  const handleSaveApiKey = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('FINNHUB_API_KEY', apiKey.trim());
-    } else {
-      localStorage.removeItem('FINNHUB_API_KEY');
-    }
-    setShowSettings(false);
-    window.location.reload();
   };
 
   const activeMode = (import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY')) ? 'LIVE API' : 'MOCK ENGINE';
   const companyName = COMPANY_NAMES[activeTicker] || `${activeTicker} Equities`;
 
   return (
-    <header className="w-full bg-[#0C0C0E]/50 backdrop-blur-md border-b border-brandBorder py-4 px-8 flex justify-between items-center select-none sticky top-0 z-40">
+    <header className="w-full bg-obsidian/50 backdrop-blur-md border-b border-graphite py-4 px-8 flex justify-between items-center select-none sticky top-0 z-40">
       
-      {/* Left Breadcrumb */}
-      <div className="flex items-center space-x-2 font-sans text-sm">
-        <span className="text-brandText/40 hover:text-brandText/70 cursor-pointer transition-colors">
-          {activeSidebarItem === 'Invest' ? 'Invest' : 'App'}
-        </span>
-        <span className="text-brandText/30 font-mono text-xs">/</span>
-        <span className="text-white font-semibold">
-          {activeSidebarItem === 'Invest' ? companyName : activeSidebarItem}
-        </span>
-      </div>
+      {/* Left Spacer for Centering Search */}
+      <div className="hidden md:block w-32 flex-shrink-0" />
 
       {/* Center Search Pill with Autocomplete Dropdown */}
       <div ref={dropdownRef} className="relative max-w-sm w-full mx-6">
@@ -152,7 +136,7 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
             onFocus={() => query.trim() && setShowDropdown(true)}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search symbol or company (e.g. Apple, TSLA)..."
-            className="w-full bg-[#18181B] border border-white/10 rounded-full py-2 pl-10 pr-9 font-sans text-xs focus:outline-none focus:border-white/30 focus:bg-[#202024] transition-all placeholder:text-brandText/30 text-white"
+            className="w-full bg-carbon border border-slate rounded-full py-2 pl-10 pr-9 font-sans text-xs focus:outline-none focus:border-fog transition-all placeholder:text-smoke text-bone"
           />
           <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-brandText/30" />
           {isSearching && (
@@ -162,7 +146,7 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
 
         {/* Autocomplete Results Dropdown */}
         {showDropdown && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-[#161619] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 text-left">
+          <div className="absolute top-full left-0 right-0 mt-2 bg-panel border border-graphite rounded-2xl shadow-2xl overflow-hidden z-50 text-left">
             {isSearching ? (
               <div className="p-4 text-center font-mono text-xs text-brandText/40 flex items-center justify-center space-x-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -238,58 +222,7 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
           </span>
         </div>
 
-        {/* Settings button */}
-        <button
-          onClick={() => setShowSettings(true)}
-          className="p-1.5 rounded-lg hover:bg-white/[0.04] transition-all text-brandText/50 hover:text-white"
-          title="Configure API Token"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
-
       </div>
-
-      {/* Settings Modal overlay */}
-      {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#161619] border border-white/10 p-6 rounded-2xl max-w-sm w-full shadow-2xl relative text-left">
-            <h3 className="font-sans font-bold text-lg mb-2 text-white">
-              API Configuration
-            </h3>
-            <p className="text-xs text-brandText/60 mb-4 font-sans leading-relaxed">
-              Paste your Finnhub Token below for live market rates. If empty, the terminal runs on a hyper-realistic mock simulator.
-            </p>
-
-            <div className="space-y-3 mb-6">
-              <label className="block text-[10px] font-mono tracking-wider text-brandText/70 uppercase">
-                Finnhub API Key
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Token string..."
-                className="w-full bg-[#0C0C0E] border border-white/10 rounded-lg py-2 px-3 font-mono text-xs text-white focus:outline-none focus:border-white/35"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="px-4 py-2 border border-white/10 rounded-lg text-xs font-mono text-brandText/60 hover:text-white hover:bg-white/[0.04] transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveApiKey}
-                className="px-4 py-2 bg-white text-black rounded-lg text-xs font-mono font-bold hover:bg-white/90 transition-all"
-              >
-                Save & Restart
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

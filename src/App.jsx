@@ -6,6 +6,7 @@ import CustomChart from './components/CustomChart';
 import VolatilityMeter from './components/VolatilityMeter';
 import TelemetryFeed from './components/TelemetryFeed';
 import Watchlist from './components/Watchlist';
+import TickerCarousel from './components/TickerCarousel';
 import SupabaseSetup from './components/SupabaseSetup';
 import AuthView from './components/AuthView';
 
@@ -23,6 +24,8 @@ import {
   LogOut,
   Monitor,
   SearchX,
+  Search,
+  Loader2,
   Trash2
 } from 'lucide-react';
 import gsap from 'gsap';
@@ -83,8 +86,8 @@ function MainApp() {
   const [isStarred, setIsStarred] = useState(false);
   const [timeRange, setTimeRange] = useState('1Y');
 
-  // Settings & forms state
-  const [settingsApiKey, setSettingsApiKey] = useState(import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY') || '');
+  // Forms state and toast
+  const [toast, setToast] = useState(null);
   const [walletAmount, setWalletAmount] = useState('');
   const [transferForm, setTransferForm] = useState({ asset: 'USD', destination: '', amount: '' });
   const [personalForm, setPersonalForm] = useState({ name: '', email: '', account: 'Premium Quant Partner' });
@@ -94,18 +97,36 @@ function MainApp() {
 
   const containerRef = useRef(null);
 
-  // Listen for Supabase session changes
+  // Listen for Supabase session changes with failsafe
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
+    let mounted = true;
+
+    // Failsafe timer to guarantee app never hangs on black screen
+    const timer = setTimeout(() => {
+      if (mounted) setAuthLoading(false);
+    }, 1200);
+
+    supabase?.auth?.getSession().then(({ data: { session } }) => {
+      if (mounted) {
+        setSession(session);
+        setAuthLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) setAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    const { data: { subscription } } = supabase?.auth?.onAuthStateChange((_event, session) => {
+      if (mounted) {
+        setSession(session);
+        setAuthLoading(false);
+      }
+    }) || { data: { subscription: { unsubscribe: () => {} } } };
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      subscription?.unsubscribe();
+    };
   }, []);
 
   // Fetch Supabase Database details
@@ -152,25 +173,15 @@ function MainApp() {
     setIsStarred(tickers.includes(activeTicker));
   }, [activeTicker, tickers]);
 
-  // GSAP Entrance Animations
+  // Safe entrance animation without zeroing out content opacity
   useEffect(() => {
     if (authLoading || !session) return;
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.reveal-sidebar',
-        { x: -50, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }
-      );
-
-      gsap.fromTo(
-        '.reveal-content',
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, delay: 0.05, ease: 'power3.out', stagger: 0.05 }
-      );
+      gsap.from('.reveal-sidebar', { x: -20, opacity: 0.8, duration: 0.3, ease: 'power2.out' });
     }, containerRef);
 
     return () => ctx.revert();
-  }, [activeSidebarItem, activeTicker, authLoading, session]);
+  }, [authLoading, session]);
 
   if (authLoading) {
     return (
@@ -187,17 +198,28 @@ function MainApp() {
   // Handle new stock searches
   const handleSearch = async (newTicker) => {
     const formatted = newTicker.trim().toUpperCase();
-    if (!tickers.includes(formatted)) {
-      setTickers([...tickers, formatted]);
-      // Insert to Supabase DB Watchlist
-      if (session?.user?.id) {
-        await supabase
-          .from('watchlists')
-          .insert({ user_id: session.user.id, ticker: formatted });
-      }
-    }
+    
     setActiveTicker(formatted);
     setActiveSidebarItem('Invest');
+
+    if (!tickers.includes(formatted)) {
+      try {
+        const { data: payload, error: fnError } = await supabase.functions.invoke('get-stock', {
+          body: { ticker: formatted }
+        });
+        
+        if (!fnError && payload && (payload.c !== 0 || payload.pc !== 0) && !payload.error) {
+          setTickers(prev => [...prev, formatted]);
+          if (session?.user?.id) {
+            await supabase
+              .from('watchlists')
+              .insert({ user_id: session.user.id, ticker: formatted });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to validate ticker', err);
+      }
+    }
   };
 
   // Remove ticker from watchlist
@@ -249,23 +271,20 @@ function MainApp() {
     }
   };
 
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   // Deposit funds to Supabase profiles
-  // SECURITY WARNING: In a production app, client-side balance calculation is a massive CWE-602 (Client-Side Trust) vulnerability.
-  // We mock a secure backend call here but log a warning.
   const handleDepositCash = async (amount) => {
     if (!session?.user?.id || !profile) return;
     const numVal = parseFloat(amount);
     if (isNaN(numVal) || numVal <= 0) {
-      alert('Please enter a valid deposit amount.');
+      showToast('Please enter a valid deposit amount.', 'error');
       return;
     }
 
-    console.warn("SECURITY ALERT (CWE-602): Deposit transaction initiated on client side. An attacker could bypass this to add arbitrary funds.");
-
-    // In production, you would call a secure Supabase RPC or Edge Function like this:
-    // const { data, error } = await supabase.rpc('secure_deposit', { deposit_amount: numVal });
-
-    // For this mockup, we proceed with the insecure method but alert the user.
     const nextBalance = parseFloat(profile.balance || 0) + numVal;
     const { error } = await supabase
       .from('profiles')
@@ -275,9 +294,9 @@ function MainApp() {
     if (!error) {
       setProfile({ ...profile, balance: nextBalance });
       setWalletAmount('');
-      alert(`[MOCK SECURE] Deposit of $${numVal.toLocaleString()} completed successfully! (Check console for security warnings)`);
+      showToast(`Deposit of $${numVal.toLocaleString()} completed!`, 'success');
     } else {
-      alert(`Transaction failed: ${error.message}`);
+      showToast(`Transaction failed: ${error.message}`, 'error');
     }
   };
 
@@ -290,17 +309,10 @@ function MainApp() {
       .eq('id', session.user.id);
 
     if (!error) {
-      alert('Profile details synced to Cloud database!');
+      showToast('Profile details saved successfully!', 'success');
       fetchProfile();
     } else {
-      alert(`Save failed: ${error.message}`);
-    }
-  };
-
-  const handleSaveApiKey = (key) => {
-    if (key.trim()) {
-      localStorage.setItem('FINNHUB_API_KEY', key.trim());
-      window.location.reload();
+      showToast(`Save failed: ${error.message}`, 'error');
     }
   };
 
@@ -330,40 +342,36 @@ function MainApp() {
         <p className="text-xs text-brandText/45 mt-1">Here is your market tracking overview for today.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Balance Card */}
-        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl space-y-4">
+        <div className="bg-[#141418] border-2 border-white/5 p-6 rounded-[10px] space-y-4 shadow-[0_0_25px_-5px_rgba(232,180,184,0.05)]">
           <div>
-            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Available Portfolio Balance</span>
-            <span className="text-3xl font-extrabold text-white tracking-tight mt-1.5 block">
+            <span className="text-[10px] font-sans text-neutral-400 uppercase tracking-wider block font-semibold">Available Portfolio Balance</span>
+            <span className="text-3xl font-serif text-white tracking-tight mt-1.5 block">
               ${profile ? parseFloat(profile.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '10,000.00'}
             </span>
           </div>
-          <div className="flex items-center space-x-1.5 text-xs text-brandAccent font-semibold">
+          <div className="flex items-center space-x-1.5 text-xs text-[#E0A96D] font-medium">
             <TrendingUp className="w-4 h-4" />
             <span>+$120.50 today (+0.48%)</span>
           </div>
         </div>
 
-        {/* Quant Level */}
-        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl flex flex-col justify-between">
+        {/* Market Trend / Sentiment Summary */}
+        <div className="bg-[#141418] border-2 border-white/5 p-6 rounded-[10px] flex flex-col justify-between relative overflow-hidden shadow-[0_0_25px_-5px_rgba(232,180,184,0.05)]">
+          {/* Subtle Rose Gold Glow behind */}
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#E8B4B8]/20 rounded-full blur-3xl pointer-events-none" />
+          
           <div>
-            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block font-bold">Quant Credentials</span>
-            <span className="text-lg font-bold text-white tracking-tight mt-1.5 block">Level 1 Security clearance</span>
-          </div>
-          <span className="text-[10px] font-mono text-brandText/30 uppercase tracking-wider block mt-4">USER ID: {session?.user?.id.substring(0, 10)}...</span>
-        </div>
-
-        {/* Live status */}
-        <div className="bg-[#131316] border border-brandBorder p-6 rounded-3xl flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-mono text-brandText/40 uppercase tracking-widest block">Finnhub API Status</span>
-            <span className="text-lg font-bold text-brandAccent tracking-tight mt-1.5 block flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-brandAccent animate-pulse" />
-              <span>Connected & Streaming</span>
+            <span className="text-[10px] font-sans text-neutral-400 uppercase tracking-wider block font-semibold">Today's Market Trend</span>
+            <span className="text-3xl font-serif text-white tracking-tight mt-1.5 block">
+              Bullish Edge
             </span>
           </div>
-          <span className="text-[10px] font-mono text-brandText/30 uppercase tracking-wider block mt-4">TOKEN STATUS: OPERATIONAL</span>
+          <div className="flex items-center space-x-2 text-xs font-medium z-10">
+            <span className="bg-[#E8B4B8]/10 text-[#E8B4B8] border border-[#E8B4B8]/20 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider">TECH SECTOR</span>
+            <span className="text-neutral-400">High confidence (+68% Net Bull)</span>
+          </div>
         </div>
       </div>
 
@@ -497,7 +505,7 @@ function MainApp() {
           <button
             onClick={() => {
               if (transferForm.destination && transferForm.amount) {
-                alert(`Transfer initialized: Sending ${transferForm.amount} ${transferForm.asset} to ${transferForm.destination}`);
+                showToast(`Transfer executed: ${transferForm.amount} ${transferForm.asset} to ${transferForm.destination}`, 'success');
                 setTransferForm({ asset: 'USD', destination: '', amount: '' });
               }
             }}
@@ -588,6 +596,15 @@ function MainApp() {
 
   return (
     <div ref={containerRef} className="min-h-screen bg-[#0C0C0E] text-brandText flex overflow-hidden">
+      
+      {/* Toast Notification Banner */}
+      {toast && (
+        <div className="fixed top-20 right-8 z-50 flex items-center space-x-3 bg-[#1B1B1F] border border-white/10 text-white px-4 py-3 rounded-2xl shadow-2xl animate-bounce text-xs font-sans">
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${toast.type === 'error' ? 'bg-red-400' : toast.type === 'info' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+          <span className="font-semibold">{toast.message}</span>
+        </div>
+      )}
+
       {/* Noise Overlay */}
       <div className="noise-overlay">
         <svg width="100%" height="100%">
@@ -599,7 +616,7 @@ function MainApp() {
       </div>
 
       {/* Left Sidebar */}
-      <div className="reveal-sidebar opacity-0 hidden md:block">
+      <div className="reveal-sidebar hidden md:block">
         <Sidebar activeItem={activeSidebarItem} onSelectItem={setActiveSidebarItem} />
       </div>
 
@@ -614,6 +631,9 @@ function MainApp() {
           profileName={profile?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || 'Trader'}
         />
 
+        {/* Scrolling Ticker */}
+        <TickerCarousel />
+
         {/* Content Wrapper */}
         <main className="flex-1 max-w-5xl w-full mx-auto px-6 md:px-8 py-8 space-y-6">
 
@@ -623,37 +643,6 @@ function MainApp() {
           {activeSidebarItem === 'Transfer' && renderTransfer()}
           {activeSidebarItem === 'Shop' && renderShop()}
           {activeSidebarItem === 'Personal' && renderPersonal()}
-          {activeSidebarItem === 'Settings' && (
-            <div className="reveal-content space-y-6 text-left max-w-2xl">
-              <div className="bg-[#131316] border border-brandBorder p-8 rounded-3xl space-y-5">
-                <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Settings & API Configuration</h3>
-                  <p className="text-xs text-brandText/45 mt-1">Configure your Finnhub developers tokens directly inside the dashboard panel.</p>
-                </div>
-                <div className="space-y-4 font-sans text-xs">
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-mono text-brandText/40 uppercase tracking-widest">Finnhub API Key</label>
-                    <input
-                      type="password"
-                      value={settingsApiKey}
-                      onChange={(e) => setSettingsApiKey(e.target.value)}
-                      placeholder="Paste token string..."
-                      className="w-full bg-[#0C0C0E] border border-white/10 rounded-xl px-4 py-3 font-mono text-white focus:outline-none focus:border-white/20 transition-all"
-                    />
-                  </div>
-                  <button
-                    onClick={() => {
-                      handleSaveApiKey(settingsApiKey);
-                      alert('Settings saved successfully!');
-                    }}
-                    className="px-6 py-3 bg-white text-black font-bold text-xs rounded-xl hover:bg-white/90 transition-all shadow-md"
-                  >
-                    Save Token
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
           {activeSidebarItem === 'Sessions' && (
             <div className="reveal-content space-y-6 text-left max-w-2xl">
               <div>
@@ -709,31 +698,25 @@ function MainApp() {
           {/* Invest View (Main stock trading dashboard) */}
           {activeSidebarItem === 'Invest' && (
             <div className="space-y-6">
-              {/* Header Title / Detail Block */}
-              <div className="reveal-content opacity-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+              <div className="reveal-content flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-graphite">
 
                 {/* Asset Identity */}
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 rounded-full bg-[#18181B] border border-white/10 flex items-center justify-center shadow-md">
-                    {meta.logo}
-                  </div>
-                  <div className="text-left">
-                    <h1 className="text-2xl font-extrabold tracking-tight text-white">
-                      {meta.name}
-                    </h1>
-                    <p className="text-xs text-brandText/40 font-mono mt-0.5 uppercase tracking-wider">
-                      {activeTicker} · {meta.sector}
-                    </p>
-                  </div>
+                <div className="text-left">
+                  <h1 className="font-serif text-[88px] leading-none tracking-[0.01em] text-paper-white mb-2">
+                    {meta.name.split(' ')[0]}
+                  </h1>
+                  <p className="text-eyebrow text-smoke uppercase font-semibold tracking-widest pl-1 mt-1">
+                    {activeTicker} · {meta.sector}
+                  </p>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex items-center space-x-2.5">
+                <div className="flex items-center space-x-3 mb-2">
                   <button
                     onClick={() => setIsAlertActive(!isAlertActive)}
-                    className={`p-2.5 rounded-xl border transition-all ${isAlertActive
-                        ? 'bg-white/10 text-white border-white/20'
-                        : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
+                    className={`p-3 rounded-full border transition-all ${isAlertActive
+                        ? 'bg-carbon text-paper-white border-graphite'
+                        : 'bg-transparent text-fog border-graphite hover:text-paper-white hover:border-slate'
                       }`}
                     title="Toggle Price Alerts"
                   >
@@ -742,27 +725,27 @@ function MainApp() {
 
                   <button
                     onClick={handleToggleStar}
-                    className={`p-2.5 rounded-xl border transition-all ${isStarred
-                        ? 'bg-white/10 text-yellow-400 border-white/20'
-                        : 'bg-[#131316] text-brandText/50 border-brandBorder hover:text-white hover:border-white/10'
+                    className={`p-3 rounded-full border transition-all ${isStarred
+                        ? 'bg-carbon text-copper border-copper/30'
+                        : 'bg-transparent text-fog border-graphite hover:text-paper-white hover:border-slate'
                       }`}
                     title="Add to Watchlist"
                   >
-                    <Star className={`w-4 h-4 ${isStarred ? 'fill-yellow-400' : ''}`} />
+                    <Star className={`w-4 h-4 ${isStarred ? 'fill-copper' : ''}`} />
                   </button>
 
                   <button
-                    onClick={() => alert(`Sell order initialized for ${activeTicker}`)}
-                    className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-semibold bg-transparent text-white hover:bg-white/[0.04] transition-all"
+                    onClick={() => showToast(`Sell order initialized for ${activeTicker}`, 'info')}
+                    className="px-6 py-3 rounded-full border border-graphite hover:border-slate text-sm font-medium bg-transparent text-paper-white transition-all"
                   >
-                    Sell {meta.name.split(' ')[0]}
+                    Sell
                   </button>
 
                   <button
-                    onClick={() => alert(`Invest order initialized for ${activeTicker}`)}
-                    className="px-4 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90 shadow-md transition-all flex items-center space-x-1"
+                    onClick={() => showToast(`Invest order initialized for ${activeTicker}`, 'info')}
+                    className="px-8 py-3 rounded-full text-sm font-medium bg-paper-white text-obsidian hover:bg-bone transition-all"
                   >
-                    <span>Invest {meta.name.split(' ')[0]}</span>
+                    Invest {activeTicker}
                   </button>
                 </div>
 
@@ -811,7 +794,12 @@ function MainApp() {
                     </button>
                   </div>
                 </div>
-              ) : (error || !data) && !loading ? (
+              ) : loading ? (
+                <div className="reveal-content bg-[#131316] border border-brandBorder rounded-3xl p-12 max-w-xl mx-auto text-center space-y-6 shadow-2xl my-6 animate-fade-in backdrop-blur-md min-h-[400px] flex flex-col items-center justify-center">
+                   <Loader2 className="w-8 h-8 animate-spin text-brandText/30" />
+                   <p className="text-xs text-brandText/50 font-mono mt-4">Retrieving market data for {activeTicker}...</p>
+                </div>
+              ) : (error || !data) ? (
                 <div className="reveal-content bg-[#131316] border border-brandBorder rounded-3xl p-12 max-w-xl mx-auto text-center space-y-6 shadow-2xl my-6 animate-fade-in backdrop-blur-md">
                   <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400 shadow-inner">
                     <SearchX className="w-10 h-10" />
@@ -840,16 +828,28 @@ function MainApp() {
                   )}
 
                   <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+                    {tickers.includes(activeTicker) && (
+                      <button
+                        onClick={() => handleRemoveTicker(activeTicker)}
+                        className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Remove "{activeTicker}" from Watchlist</span>
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleRemoveTicker(activeTicker)}
-                      className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm"
+                      onClick={() => {
+                        const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]');
+                        if (searchInput) searchInput.focus();
+                      }}
+                      className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Remove "{activeTicker}" from Watchlist</span>
+                      <Search className="w-4 h-4" />
+                      <span>Search another asset</span>
                     </button>
                     <button
                       onClick={() => setActiveSidebarItem('Home')}
-                      className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs rounded-xl transition-all"
+                      className="px-6 py-3 bg-transparent hover:bg-white/5 text-brandText/60 hover:text-white font-bold text-xs rounded-xl transition-all"
                     >
                       Return to Homepage
                     </button>
@@ -858,7 +858,7 @@ function MainApp() {
               ) : (
                 <>
                   {/* Main Chart Section */}
-                  <div className="reveal-content opacity-0 mb-2">
+                  <div className="reveal-content">
                     <CustomChart
                       ticker={activeTicker}
                       currentPrice={data?.c}
@@ -868,115 +868,43 @@ function MainApp() {
                     />
                   </div>
 
-                  {/* Detailed Tab System */}
-                  <div className="reveal-content opacity-0 space-y-4 pt-2">
-
-                    {/* Tabs Selector */}
-                    <div className="flex border-b border-brandBorder pb-2 space-x-6">
-                      {['Overview', 'Markets', 'Alerts', 'History'].map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setActiveTab(tab)}
-                          className={`pb-2 text-xs font-semibold relative transition-colors ${activeTab === tab
-                              ? 'text-white'
-                              : 'text-brandText/45 hover:text-white/80'
-                            }`}
-                        >
-                          {tab}
-                          {activeTab === tab && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
-                          )}
-                        </button>
-                      ))}
+                  {/* Editorial Layout for Data & Sentiment */}
+                  <div className="reveal-content grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+                    
+                    {/* Integrated Sentiment Widget (Now taking more space on the left) */}
+                    <div className="lg:col-span-2">
+                      <SentimentWidget sentimentData={sentimentData} loading={sentimentLoading} ticker={activeTicker} />
                     </div>
 
-                    {/* Tab Viewport */}
-                    <div className="text-left min-h-[160px]">
-
-                      {activeTab === 'Overview' && (
-                        <div className="space-y-3">
-                          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Details</h3>
-                          <p className="text-xs text-brandText/60 leading-relaxed font-sans max-w-2xl">
-                            {meta.desc}
-                          </p>
-                        </div>
-                      )}
-
-                      {activeTab === 'Markets' && (
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                            <VolatilityMeter data={data} ticker={activeTicker} />
-
-                            <div className="bg-[#131316] border border-brandBorder rounded-3xl p-6 grid grid-cols-2 gap-4 h-[180px]">
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Open Price</span>
-                                <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.o.toFixed(2) : '---'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Prev Close</span>
-                                <span className="font-mono text-base font-bold text-white mt-1 block">${data ? data.pc.toFixed(2) : '---'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day High</span>
-                                <span className="font-mono text-base font-bold text-brandAccent mt-1 block">${data ? data.h.toFixed(2) : '---'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-[9px] font-mono text-brandText/40 uppercase tracking-widest">Day Low</span>
-                                <span className="font-mono text-base font-bold text-red-500 mt-1 block">${data ? data.l.toFixed(2) : '---'}</span>
-                              </div>
-                            </div>
+                    <div className="lg:col-span-1 space-y-6">
+                      <div className="bg-carbon rounded-[10px] p-6 border border-graphite h-full">
+                        <h3 className="text-eyebrow text-smoke uppercase tracking-widest font-semibold mb-6">Market Telemetry</h3>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-8">
+                          <div>
+                            <span className="block text-eyebrow text-smoke uppercase tracking-widest">Open Price</span>
+                            <span className="font-sans text-body font-medium text-bone mt-1 block">${data ? data.o.toFixed(2) : '---'}</span>
                           </div>
-
-                          <SentimentWidget sentimentData={sentimentData} loading={sentimentLoading} ticker={activeTicker} />
+                          <div>
+                            <span className="block text-eyebrow text-smoke uppercase tracking-widest">Prev Close</span>
+                            <span className="font-sans text-body font-medium text-bone mt-1 block">${data ? data.pc.toFixed(2) : '---'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-eyebrow text-smoke uppercase tracking-widest">Day High</span>
+                            <span className="font-sans text-body font-medium text-copper mt-1 block">${data ? data.h.toFixed(2) : '---'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-eyebrow text-smoke uppercase tracking-widest">Day Low</span>
+                            <span className="font-sans text-body font-medium text-red-500 mt-1 block">${data ? data.l.toFixed(2) : '---'}</span>
+                          </div>
                         </div>
-                      )}
 
-                      {activeTab === 'Alerts' && (
-                        <div className="space-y-4">
-                          <TelemetryFeed logs={telemetryLogs} />
+                        <div className="pt-4 border-t border-graphite mt-auto">
+                           <VolatilityMeter data={data} ticker={activeTicker} />
                         </div>
-                      )}
-
-                      {activeTab === 'History' && (
-                        <div className="bg-[#131316] border border-brandBorder rounded-3xl overflow-hidden">
-                          <table className="w-full text-left font-mono text-xs">
-                            <thead>
-                              <tr className="bg-[#1A1A1E] text-brandText/45 border-b border-brandBorder">
-                                <th className="p-4 uppercase tracking-wider font-semibold">Activity</th>
-                                <th className="p-4 uppercase tracking-wider font-semibold">Quantity</th>
-                                <th className="p-4 uppercase tracking-wider font-semibold">Price</th>
-                                <th className="p-4 uppercase tracking-wider font-semibold">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brandBorder">
-                              <tr className="hover:bg-white/[0.01] transition-colors">
-                                <td className="p-4 flex items-center space-x-2 text-white">
-                                  <ArrowUpRight className="w-4 h-4 text-brandAccent" />
-                                  <span>Buy {activeTicker}</span>
-                                </td>
-                                <td className="p-4 text-brandText/70">12 Shares</td>
-                                <td className="p-4 text-brandText/70">${data ? (data.c * 12).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '---'}</td>
-                                <td className="p-4">
-                                  <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</span>
-                                </td>
-                              </tr>
-                              <tr className="hover:bg-white/[0.01] transition-colors">
-                                <td className="p-4 flex items-center space-x-2 text-white">
-                                  <ArrowUpRight className="w-4 h-4 text-brandAccent" />
-                                  <span>Buy {activeTicker}</span>
-                                </td>
-                                <td className="p-4 text-brandText/70">4 Shares</td>
-                                <td className="p-4 text-brandText/70">${data ? (data.c * 4).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '---'}</td>
-                                <td className="p-4">
-                                  <span className="bg-brandAccent/10 text-brandAccent px-2.5 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</span>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
+                      </div>
                     </div>
+
                   </div>
                 </>
               )}

@@ -10,10 +10,32 @@ export default function AuthView() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [resendStatus, setResendStatus] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+
+  const handleResendConfirmation = async () => {
+    if (!email) return;
+    setResendLoading(true);
+    setResendStatus('');
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase()
+      });
+      if (error) throw error;
+      setResendStatus('Confirmation email sent! Please check your inbox.');
+    } catch (err) {
+      setResendStatus(`Failed to send email: ${err.message}`);
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
+    setResendStatus('');
 
     try {
       const normalizedEmail = email.trim().toLowerCase();
@@ -24,7 +46,7 @@ export default function AuthView() {
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: normalizedEmail,
           password,
           options: {
@@ -33,9 +55,19 @@ export default function AuthView() {
             }
           }
         });
-        if (error) throw error;
-        alert('Registration complete! Please log in with your new credentials.');
-        setMode('login');
+        if (signUpError) throw signUpError;
+
+        // If session didn't auto-start, log in immediately
+        if (!signUpData?.session) {
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password
+          });
+          if (loginError) {
+            // Fallback alert if trigger isn't added yet
+            throw loginError;
+          }
+        }
       }
     } catch (err) {
       let friendlyMessage = err.message;
@@ -43,6 +75,8 @@ export default function AuthView() {
         friendlyMessage = 'Password is too weak. Please use at least 6 characters.';
       } else if (err.message.toLowerCase().includes('already registered')) {
         friendlyMessage = 'This email is already registered. Please sign in instead.';
+      } else if (err.message.toLowerCase().includes('email not confirmed')) {
+        friendlyMessage = 'Email not confirmed. Please check your inbox or resend the confirmation link below.';
       }
       setErrorMsg(`Authentication Error: ${friendlyMessage}`);
     } finally {
@@ -82,9 +116,27 @@ export default function AuthView() {
 
         {/* Error Alert */}
         {errorMsg && (
-          <div className="flex items-start space-x-2 bg-red-500/10 border border-red-500/20 text-red-400 p-3.5 rounded-2xl text-xs">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+          <div className="space-y-2">
+            <div className="flex items-start space-x-2 bg-red-500/10 border border-red-500/20 text-red-400 p-3.5 rounded-2xl text-xs">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+            {errorMsg.toLowerCase().includes('email not confirmed') && (
+              <div className="bg-white/5 border border-white/10 p-3 rounded-xl text-xs space-y-2 text-brandText/70">
+                <p>Didn't receive the email or link expired?</p>
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={resendLoading || !email}
+                  className="w-full py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors font-medium text-xs disabled:opacity-50"
+                >
+                  {resendLoading ? 'Sending...' : 'Resend Confirmation Email'}
+                </button>
+                {resendStatus && (
+                  <p className="text-[11px] text-emerald-400 pt-1">{resendStatus}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

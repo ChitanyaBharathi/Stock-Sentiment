@@ -64,7 +64,7 @@ async function fetchRealLiveCompanyNews(ticker) {
   // Attempt 2: Fetch live company news from Finnhub API if token is provided
   if (articles.length === 0) {
     try {
-      const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY');
+      const apiKey = localStorage.getItem('FINNHUB_API_KEY');
       if (apiKey) {
         const today = new Date();
         const pastDate = new Date();

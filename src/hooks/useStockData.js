@@ -11,6 +11,7 @@ export function useStockData(ticker) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [flashDirection, setFlashDirection] = useState(null); // 'up', 'down', or null
   const prevPriceRef = useRef(null);
+  const prevTickerRef = useRef(ticker);
   const telemetryLogsRef = useRef([]);
   const [telemetryLogs, setTelemetryLogs] = useState([]);
 
@@ -28,7 +29,9 @@ export function useStockData(ticker) {
     setLoading(true);
     setError(null);
     prevPriceRef.current = null;
-
+    setData(null);
+    setCandleData(null);
+    
     let intervalId;
 
     const fetchData = async (isFirstRender = false) => {
@@ -89,7 +92,7 @@ export function useStockData(ticker) {
             // Attempt 2: Finnhub API (Requires API Key on client side)
             if (!mappedData) {
               try {
-                const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY');
+                const apiKey = localStorage.getItem('FINNHUB_API_KEY');
                 if (apiKey) {
                   const to = Math.floor(Date.now() / 1000);
                   const from = to - (365 * 24 * 60 * 60); // Last 1 year
@@ -162,6 +165,16 @@ export function useStockData(ticker) {
       return () => clearTimeout(timer);
     }
   }, [flashDirection]);
+
+  // Prevent ghost chart flashing: if ticker changed, return loading state instantly before useEffect fires
+  const isStale = prevTickerRef.current !== ticker;
+  useEffect(() => {
+    prevTickerRef.current = ticker;
+  }, [ticker]);
+
+  if (isStale) {
+    return { data: null, candleData: null, loading: true, error: null, lastUpdated: null, flashDirection: null, telemetryLogs };
+  }
 
   return { data, candleData, loading, error, lastUpdated, flashDirection, telemetryLogs };
 }
