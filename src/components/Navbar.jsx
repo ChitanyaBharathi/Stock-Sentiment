@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, TrendingUp } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 
 const POPULAR_EQUITIES = [
   { symbol: 'AAPL', description: 'Apple Inc', type: 'Common Stock' },
@@ -14,16 +14,7 @@ const POPULAR_EQUITIES = [
   { symbol: 'AMD', description: 'Advanced Micro Devices', type: 'Common Stock' },
 ];
 
-const COMPANY_NAMES = {
-  AAPL: 'Apple Inc',
-  TSLA: 'Tesla Inc',
-  NVDA: 'NVIDIA Corp',
-  GOOGL: 'Alphabet Inc (Google)',
-  MSFT: 'Microsoft Corporation',
-  AMZN: 'Amazon.com Inc',
-};
-
-export default function Navbar({ onSearch, isFetching, hasError, activeTicker, activeSidebarItem = 'Invest', profileName = 'Trader' }) {
+export default function Navbar({ onSearch, isFetching, hasError, activeTicker: _activeTicker, activeSidebarItem: _activeSidebarItem = 'Invest', profileName = 'Trader' }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -119,7 +110,6 @@ export default function Navbar({ onSearch, isFetching, hasError, activeTicker, a
   };
 
   const activeMode = (import.meta.env.VITE_FINNHUB_API_KEY || localStorage.getItem('FINNHUB_API_KEY')) ? 'LIVE API' : 'MOCK ENGINE';
-  const companyName = COMPANY_NAMES[activeTicker] || `${activeTicker} Equities`;
 
   return (
     <header className="w-full bg-obsidian/50 backdrop-blur-md border-b border-graphite py-4 px-8 flex justify-between items-center select-none sticky top-0 z-40">

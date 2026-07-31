@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function VolatilityMeter({ data, ticker }) {
+export default function VolatilityMeter({ data, _ticker }) {
   const payload = data || { c: 0, h: 0, l: 0, o: 0 };
   const spread = payload.h - payload.l;
   const pctSpread = payload.o > 0 ? (spread / payload.o) * 100 : 0;

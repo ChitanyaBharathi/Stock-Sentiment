@@ -50,7 +50,7 @@ export function useStockData(ticker) {
               const body = await fnError.context.json();
               if (body?.error) msg = body.error;
             }
-          } catch (_) {}
+          } catch {}
           throw new Error(msg);
         }
         

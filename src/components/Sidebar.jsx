@@ -6,7 +6,6 @@ import {
   TrendingUp, 
   ShoppingBag, 
   User, 
-  Settings, 
   LogOut, 
   Monitor 
 } from 'lucide-react';

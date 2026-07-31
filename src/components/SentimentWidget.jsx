@@ -9,8 +9,7 @@ import {
   ChevronUp,
   Sparkles,
   Zap,
-  ShieldCheck,
-  BarChart2
+  ShieldCheck
 } from 'lucide-react';
 
 export default function SentimentWidget({ sentimentData, loading, ticker }) {

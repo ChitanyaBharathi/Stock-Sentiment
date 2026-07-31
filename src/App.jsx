@@ -4,7 +4,6 @@ import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import CustomChart from './components/CustomChart';
 import VolatilityMeter from './components/VolatilityMeter';
-import TelemetryFeed from './components/TelemetryFeed';
 import Watchlist from './components/Watchlist';
 import TickerCarousel from './components/TickerCarousel';
 import SupabaseSetup from './components/SupabaseSetup';
@@ -16,7 +15,6 @@ import { supabase, hasSupabaseConfig } from './lib/supabaseClient';
 import {
   Bell,
   Star,
-  ArrowUpRight,
   ShieldCheck,
   AlertTriangle,
   TrendingUp,
@@ -80,11 +78,11 @@ function MainApp() {
   // Watchlist & UI States
   const [tickers, setTickers] = useState(['AAPL', 'TSLA', 'NVDA']);
   const [activeTicker, setActiveTicker] = useState('AAPL');
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [_activeTab, _setActiveTab] = useState('Overview');
   const [activeSidebarItem, setActiveSidebarItem] = useState('Home');
   const [isAlertActive, setIsAlertActive] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
-  const [timeRange, setTimeRange] = useState('1Y');
+  const [_timeRange, _setTimeRange] = useState('1Y');
 
   // Forms state and toast
   const [toast, setToast] = useState(null);
@@ -92,7 +90,7 @@ function MainApp() {
   const [transferForm, setTransferForm] = useState({ asset: 'USD', destination: '', amount: '' });
   const [personalForm, setPersonalForm] = useState({ name: '', email: '', account: 'Premium Quant Partner' });
 
-  const { data, candleData, loading, error, telemetryLogs } = useStockData(activeTicker);
+  const { data, loading, error } = useStockData(activeTicker);
   const { sentimentData, loading: sentimentLoading } = useStockSentiment(activeTicker);
 
   const containerRef = useRef(null);
