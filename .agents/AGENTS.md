@@ -16,3 +16,9 @@
 ## API & WebSockets Policy
 - Fallback gracefully between Live Finnhub API Key, Yahoo Finance proxy, and Edge Function endpoints.
 - Manage WebSockets cleanly (`wss://ws.finnhub.io`): always unsubscribe and close sockets on component unmount to avoid memory leaks.
+
+## Git & SWE Workflow Policy
+- **Never Commit Directly to Main**: When starting work on any feature, refactor, or non-trivial fix, always create and check out a dedicated descriptive feature branch first (e.g. `git checkout -b feature/feature-name` or `git checkout -b fix/issue-name`).
+- **Pre-Push Validation**: Always run `npm run lint` and `npm test` locally before pushing to verify 0 errors.
+- **CI Feature Branch Workflow**: Push changes to the feature branch so GitHub Actions CI validates the code remotely before creating or merging a Pull Request into `main`.
+
