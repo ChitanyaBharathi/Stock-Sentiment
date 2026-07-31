@@ -21,10 +21,10 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm install --include=optional
 
       - name: Run Linter (Oxlint)
-        run: npx oxlint src
+        run: npx --yes oxlint@latest src
 
       - name: Run Vitest Unit & Component Tests
         run: npx vitest run
