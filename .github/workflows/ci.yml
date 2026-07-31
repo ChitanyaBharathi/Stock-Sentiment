@@ -24,10 +24,10 @@ jobs:
         run: npm install --include=optional
 
       - name: Run Linter (Oxlint)
-        run: npm run lint
+        run: npx --yes oxlint@latest src
 
       - name: Run Vitest Unit & Component Tests
-        run: npm test
+        run: npx vitest run
 
       - name: Build Verification
         run: npx vite build
