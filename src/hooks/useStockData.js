@@ -69,7 +69,8 @@ export function useStockData(ticker) {
             
             // Attempt 1: Yahoo Finance Proxy (Most reliable, no API key needed)
             try {
-              const yahooRes = await fetch(`/api/yahoo/v8/finance/chart/${ticker}?interval=1d&range=1y`);
+              const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : 'http://localhost:5173';
+              const yahooRes = await fetch(`${origin}/api/yahoo/v8/finance/chart/${ticker}?interval=1d&range=1y`);
               if (yahooRes.ok) {
                 const data = await yahooRes.json();
                 const result = data?.chart?.result?.[0];
