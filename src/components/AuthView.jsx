@@ -117,9 +117,9 @@ export default function AuthView() {
         {/* Error Alert */}
         {errorMsg && (
           <div className="space-y-2">
-            <div className="flex items-start space-x-2 bg-red-500/10 border border-red-500/20 text-red-400 p-3.5 rounded-2xl text-xs">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <span>{errorMsg}</span>
+            <div className="flex items-start space-x-2.5 bg-[#E8B4B8]/10 border border-[#E8B4B8]/30 text-[#E8B4B8] p-3.5 rounded-2xl text-xs transition-all duration-200 shadow-sm">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#E8B4B8]" />
+              <span className="font-medium tracking-tight">{errorMsg}</span>
             </div>
             {errorMsg.toLowerCase().includes('email not confirmed') && (
               <div className="bg-white/5 border border-white/10 p-3 rounded-xl text-xs space-y-2 text-brandText/70">
