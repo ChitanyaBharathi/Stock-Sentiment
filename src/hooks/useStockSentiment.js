@@ -43,7 +43,7 @@ async function fetchRealLiveCompanyNews(ticker) {
 
   // Attempt 1: Fetch live news from Yahoo Finance Search API via local Vite proxy or direct endpoint
   try {
-    const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : 'http://localhost:5173';
+    const origin = (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') ? window.location.origin : 'http://localhost:5173';
     const yahooUrl = `${origin}/api/yahoo/v1/finance/search?q=${encodeURIComponent(ticker)}&quotesCount=1&newsCount=15`;
     const res = await fetch(yahooUrl);
     if (res.ok) {
